@@ -1,4 +1,5 @@
 #include "bsp_SuperCap.h"
+#include "bsp_can.h"
 #include "cmsis_os2.h"
 #include <string.h>
 #include "bsp_power_meter.h"
@@ -14,24 +15,9 @@ supercap_controller_t g_supercap;
 //CAN指令发送
 static void supercap_send_cmd(FDCAN_HandleTypeDef* hfdcan)
 {
-    FDCAN_TxHeaderTypeDef TxHeader;
-
-    TxHeader.Identifier = SUPERCAP_TX_ID;         // 0x601
-    TxHeader.IdType = FDCAN_STANDARD_ID;          // 标准帧
-    TxHeader.TxFrameType = FDCAN_DATA_FRAME;      // 数据帧
-    TxHeader.DataLength = FDCAN_DLC_BYTES_8;      // 8字节
-    TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-    TxHeader.BitRateSwitch = FDCAN_BRS_OFF;       // 经典 CAN 模式
-    TxHeader.FDFormat = FDCAN_CLASSIC_CAN;        
-    TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-    TxHeader.MessageMarker = 0;
-
-    if(HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) > 0)
-    {
-        HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &TxHeader, g_supercap.tx_data.data);
-    }
+    //0x601
+    BSP_CAN_Send(hfdcan, SUPERCAP_TX_ID, g_supercap.tx_data.data, FDCAN_DLC_BYTES_8);
 }
-
 
 
 

@@ -28,6 +28,7 @@
 #include "cmsis_os2.h"
 
 #include "bsp_power_meter.h"
+#include "bsp_can.h"
 #include "bsp_SuperCap.h"
 #include "power_control.h"
 #include "RM_JudgeSystem.h"

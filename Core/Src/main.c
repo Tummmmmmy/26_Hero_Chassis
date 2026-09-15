@@ -39,6 +39,7 @@
 #include "bsp_SuperCap.h"
 #include "power_control.h"
 #include "bsp_ano_protocol.h"
+#include "bsp_can.h"
 #include "cmsis_os2.h"
 #include "RM_JudgeSystem.h"
 #include "INS_task.h"
@@ -131,9 +132,6 @@ static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
 //初始化电机
 void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan);
 
-//FDCAN配置
-void BSP_FDCAN_Config(void);
-
 //更新云台yaw轴角度
 void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range);
 
@@ -151,9 +149,6 @@ void chassis_pneumatic_update(float* p_vx);
 
 //底盘控制循环
 void Chassis_Control_Loop(void);
-
-//CAN接收中断回调函数
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs);
 
 //CAN接收解码任务
 void Can_Decode_Task(void const *argument);
@@ -287,39 +282,6 @@ void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range)
     motor->current_total_angle = (float)(motor->round_count * encoder_range) + (float)motor->feedback.angle;//总角度 = 圈数 * 每圈编码值 + 当前单圈编码值
     motor->mechanical_degree = (float)motor->feedback.angle * (360.0f / encoder_range);//编码器值转换为机械角度度数
     motor->last_feedback_angle = motor->feedback.angle;
-}
-
-
-
-
-void BSP_FDCAN_Config(void)
-{
-    FDCAN_FilterTypeDef sFilterConfig;
-
-    sFilterConfig.IdType = FDCAN_STANDARD_ID;//接收所有标准帧
-    sFilterConfig.FilterIndex = 0;
-    sFilterConfig.FilterType = FDCAN_FILTER_MASK;//掩码模式
-    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sFilterConfig.FilterID1 = 0x0000; //ID
-    sFilterConfig.FilterID2 = 0x0000; // Mask=0, 接收所有
-
-    //FDCAN1
-    HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
-    HAL_FDCAN_Start(&hfdcan1);
-    HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-
-    //FDCAN2
-    HAL_FDCAN_ConfigFilter(&hfdcan2, &sFilterConfig);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan2, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
-    HAL_FDCAN_Start(&hfdcan2);
-    HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-    
-    //FDCAN3
-    HAL_FDCAN_ConfigFilter(&hfdcan3, &sFilterConfig);
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan3, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
-    HAL_FDCAN_Start(&hfdcan3);
-    HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
 }
 
 
@@ -672,34 +634,6 @@ void Chassis_Control_Loop(void)
         }
     }
 		DJI_Motor_Send_Command(&hfdcan2, 0x200, currents_to_send[0], currents_to_send[1], currents_to_send[2], currents_to_send[3]);
-}
-
-
-
-
-//CAN接收中断回调函数
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
-{
-    FDCAN_RxHeaderTypeDef rx_header;
-    uint8_t rx_data[8];
-
-    //判断是否有新消息
-    if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
-    {
-        if(HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK)
-        {
-            //只处理标准帧
-            if(rx_header.IdType == FDCAN_STANDARD_ID)
-            {
-                CAN_Rx_Message_t can_msg;
-                can_msg.hfdcan = hfdcan;
-                can_msg.can_id = rx_header.Identifier;
-                memcpy(can_msg.data, rx_data, 8);
-                
-                osMessageQueuePut(canRxQueueHandle, &can_msg, 0, 0);
-            }
-        }
-    }
 }
 
 

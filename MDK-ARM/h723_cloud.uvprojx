@@ -1044,6 +1044,11 @@
           <GroupName>BSP</GroupName>
           <Files>
             <File>
+              <FileName>bsp_can.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\BSP\bsp_can.c</FilePath>
+            </File>
+            <File>
               <FileName>bsp_power_meter.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\BSP\bsp_power_meter.c</FilePath>
