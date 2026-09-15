@@ -69,7 +69,6 @@
 
 #define PI 3.14159265358979f
 
-const float RPS_TO_RPM = 60.0f / (2.0f * PI);
 const float DEG_TO_RAD = PI / 180.0f;
 const float RAD_TO_DEG = 180.0f / PI;
 const float ENCODER_TO_RAD = 2.0f * PI / 8192.0f;//编码值与弧度的转换系数
@@ -90,29 +89,6 @@ Motor_Controller gimbal_yaw_motor;
 #define RX_GIMBAL_COMMAND_ID 0x300
 #define RX_CHASSIS_UI_ID 0x308
 
-
-
-//底盘
-Motor_Controller chassis_motors[CHASSIS_MOTOR_NUM];
-const uint8_t chassis_motor_physical_id[CHASSIS_MOTOR_NUM]= {1, 2, 4, 3};//底盘电机对应的物理ID
-
-
-//底盘参数
-const float L = 0.43f;  //前后轮距(米)
-const float W = 0.38f; //左右轮距(米)
-const float R = 0.074f; //轮子半径(米)
-const float R_recprocal = 1 / R;//R的倒数
-
-
-//PID参数
-//底盘PID
-float chassis_kp = 19.0f;//19.0
-float chassis_ki = 2.0f;//0.01f
-float chassis_kd = 0.0f;
-float chassis_Integral_Limit = 3000;//2000
-float chassis_MaxOutput = 12000;//最大输出电流
-
-
 //接收的云台数据
 volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
 volatile Chassis_UI_t UI_Data = {0,0,0,0};
@@ -132,12 +108,6 @@ static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
 //初始化电机
 void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan);
 
-//更新云台yaw轴角度
-void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range);
-
-//麦轮运动解算
-void Chassis_Movement_Calculation(float Vx, float Vy, float Wz);
-
 //气动上坎
 void chassis_pneumatic_update(float* p_vx);
 
@@ -155,9 +125,6 @@ void update_gimbal_command(const uint8_t *data);
 
 //更新云台发来的UI数据包
 void update_gimbal_ui_data(const uint8_t *data);
-
-//更新底盘电机
-void update_chassis_motors(const uint8_t* data, uint32_t can_id);
 
 //更新云台Yaw电机
 void update_gimbal_yaw(const uint8_t* data);
@@ -237,69 +204,11 @@ void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan
 void Robot_Param_Init(void)
 {
     //初始化底盘电机
-     Motor_Init(&chassis_motors[0], chassis_motor_physical_id[0], &hfdcan2);
-     Motor_Init(&chassis_motors[1], chassis_motor_physical_id[1], &hfdcan2);
-     Motor_Init(&chassis_motors[2], chassis_motor_physical_id[2], &hfdcan2);
-     Motor_Init(&chassis_motors[3], chassis_motor_physical_id[3], &hfdcan2);
-
-    //初始化底盘电机PID
-		for(int i=0; i<CHASSIS_MOTOR_NUM; i++)
-		{
-				PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, chassis_MaxOutput);
-		}
+    Chassis_Control_Init();
 		
 		//Yaw(LK)
     Motor_Init(&gimbal_yaw_motor, 1 , &hfdcan1);
 }
-
-
-//更新云台yaw轴角度
-void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range)
-{
-    float half_range = encoder_range * 0.5f;//半圈值
-
-    if(motor->last_feedback_angle == 0 && motor->round_count == 0 && motor->feedback.angle != 0)
-    {
-        motor->last_feedback_angle = motor->feedback.angle;
-        motor->current_total_angle = (float)motor->feedback.angle;
-        motor->mechanical_degree = (float)motor->feedback.angle * (360.0f / encoder_range);
-        return;
-    }
-    
-    int32_t angle_diff = (int32_t)motor->feedback.angle - (int32_t)motor->last_feedback_angle;
-
-    //过零处理
-    if(angle_diff > half_range) motor->round_count--;
-    else if (angle_diff < -half_range) motor->round_count++;
-
-
-    motor->current_total_angle = (float)(motor->round_count * encoder_range) + (float)motor->feedback.angle;//总角度 = 圈数 * 每圈编码值 + 当前单圈编码值
-    motor->mechanical_degree = (float)motor->feedback.angle * (360.0f / encoder_range);//编码器值转换为机械角度度数
-    motor->last_feedback_angle = motor->feedback.angle;
-}
-
-
-
-//麦轮运动解算
-void Chassis_Movement_Calculation(float Vx, float Vy, float Wz)
-{
-
-    float motor_target_rps[CHASSIS_MOTOR_NUM];//(rad/s)
-
-    motor_target_rps[0] = ( Vx + Vy + Wz * (L + W) * 0.5f) * R_recprocal;
-    motor_target_rps[1] = (-Vx + Vy + Wz * (L + W) * 0.5f) * R_recprocal;
-    motor_target_rps[2] = ( Vx - Vy + Wz * (L + W) * 0.5f) * R_recprocal;
-    motor_target_rps[3] = (-Vx - Vy + Wz * (L + W) * 0.5f) * R_recprocal;
-
-    //从rad/s 转换为rad/min
-    for(int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-    {
-        chassis_motors[i].target_speed = motor_target_rps[i] * RPS_TO_RPM;
-    }
-}
-
-
-
 
 
 static inline void Front_Cylinder_Extend(void)
@@ -328,6 +237,7 @@ static inline void Back_Cylinder_Retract(void)
 void chassis_pneumatic_update(float* p_vx)
 {
     static bool has_extend = 0;
+    bool sensor_state = 0;
 	
 	  //判断动作
     if(chassis.climb_mode == 0)
@@ -352,7 +262,7 @@ void chassis_pneumatic_update(float* p_vx)
         case CLIMB_BACK_EXTEND: //UP_前收后伸
 						led_state = LED_CLIMB_BACK;
 					
-			    	bool sensor_state = HAL_GPIO_ReadPin(CEJU_GPIO_Port, CEJU_Pin);
+			    	sensor_state = HAL_GPIO_ReadPin(CEJU_GPIO_Port, CEJU_Pin);
 				
             Front_Cylinder_Retract();//前收
 				
@@ -417,12 +327,7 @@ void Chassis_Control_Loop(void)
 		//失能
     if(chassis.mode == 0 || (ext_game_robot_state.InfoUpdataFlag != 0 && ext_game_robot_state.data.mains_power_chassis_output == 0))
     {
-        for(int i=0; i<CHASSIS_MOTOR_NUM; i++)
-        {
-            chassis_motors[i].target_speed = 0;
-            chassis_motors[i].target_current = 0;
-            PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, 0);
-        }
+        Chassis_On_Robot_Off();
         DJI_Motor_Send_Command(&hfdcan2, 0x200, 0, 0, 0, 0);
 				
 				Front_Cylinder_Retract();//前收
@@ -437,11 +342,12 @@ void Chassis_Control_Loop(void)
 		//重新使能
     if(last_mode == 0 && chassis.mode == 1)
     {
-        for(int i=0; i<CHASSIS_MOTOR_NUM; i++) PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, chassis_MaxOutput);
+        Chassis_On_Robot_Start();
 				power_control_init();
     }
     last_mode = 1;
 		
+	
 
     float vx = (float)chassis.vx * 0.01f;//还原数据
     float vy = (float)chassis.vy * 0.01f;
@@ -450,33 +356,18 @@ void Chassis_Control_Loop(void)
 		
     chassis_pneumatic_update(&vx);
 		
-    Chassis_Movement_Calculation(vx, vy, wz);
-		
-		
-    int16_t target_currents[CHASSIS_MOTOR_NUM] = {0};//目标电流
-    float speed_errors_rpm[CHASSIS_MOTOR_NUM] = {0.0f};//速度误差
-		
-		
 		//最大输出电流
 		float current_max_output = 12000.0f;
     if(!g_supercap.offline_flag && g_supercap.tx_data.pack.is_cap_output == SUPERCAP_OUTPUT_ENABLE)
     {
         current_max_output = 15000.0f; 
     }
-
-    for(int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-    {
-        float target_rpm = chassis_motors[i].target_speed;
-        float measured_rpm = (float)chassis_motors[i].feedback.actual_speed;
-
-			  chassis_motors[i].pid_speed.MaxOutput = current_max_output;
-			
-        target_currents[i] = (int16_t)PID_Calculate(&chassis_motors[i].pid_speed, target_rpm, measured_rpm);
-        
-        speed_errors_rpm[i] = chassis_motors[i].pid_speed.error ;
-    }
-
-
+		
+		//麦轮解算 + 速度环
+    Chassis_Control_Update(vx, vy, wz, current_max_output);
+		
+    const Chassis_Output_t* chassis_out = Chassis_Get_Output();
+		
 		#if DATA_ACQUISITION_MODE == 1//数据采集模式
 				
 				static uint32_t printf_counter = 0;
@@ -484,12 +375,13 @@ void Chassis_Control_Loop(void)
 				{
 						printf_counter = 0;
 						
+						const Motor_Controller* motors = Chassis_Get_Motors();
 						float p_actual = power_meter.power;
 						float sum_wI = 0.0f, sum_I2 = 0.0f, sum_w2 = 0.0f;
 						for (int i = 0; i < 4; i++)
 						{
-								float i_actual_A = (float)chassis_motors[i].feedback.current * (20.0f / 16384.0f);
-								float w_actual_rps = (float)chassis_motors[i].feedback.actual_speed / 19.0f * 0.104719755f;
+								float i_actual_A = (float)motors[i].feedback.current * (20.0f / 16384.0f);
+								float w_actual_rps = (float)motors[i].feedback.actual_speed / 19.0f * 0.104719755f;
 								sum_wI += w_actual_rps * i_actual_A;
 								sum_I2 += i_actual_A * i_actual_A;
 								sum_w2 += w_actual_rps * w_actual_rps;
@@ -497,40 +389,24 @@ void Chassis_Control_Loop(void)
 						VOFA_Print_Wave(4, p_actual, sum_wI, sum_I2, sum_w2);
 				}
 				
+				//数据采集模式不经功率控制, 直接发送速度环原始电流
 				int16_t current_to_send[CHASSIS_MOTOR_NUM] = {0};
-				for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-				{
-						uint8_t physical_id = chassis_motor_physical_id[i];
-						
-						if (physical_id >= 1 && physical_id <= CHASSIS_MOTOR_NUM)
-						{
-								current_to_send[physical_id - 1] = target_currents[i];
-						}
-				}
-				M3508_Send_Current(&hfdcan2, current_to_send[0], current_to_send[1], current_to_send[2], current_to_send[3]);
+				Chassis_Map_Currents_To_Physical(chassis_out->target_currents, current_to_send);
+				DJI_Motor_Send_Command(&hfdcan2, 0x200, current_to_send[0], current_to_send[1], current_to_send[2], current_to_send[3]);
 				return;
 		#endif
 
     //功率控制
-    power_control_run(chassis_motors, target_currents, speed_errors_rpm);
+    power_control_run(Chassis_Get_Motors(), chassis_out->target_currents, chassis_out->speed_errors_rpm);
 
     //获取最终电流
     int16_t final_currents[CHASSIS_MOTOR_NUM] = {0};
     get_final_chassis_current(final_currents);
 
     //发送电流
+    Chassis_Set_Target_Currents(final_currents);
     int16_t currents_to_send[CHASSIS_MOTOR_NUM] = {0};
-    for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-    {
-        chassis_motors[i].target_current = final_currents[i];
-        //获取当前逻辑电机对应的物理ID
-        uint8_t physical_id = chassis_motor_physical_id[i];
-        if(physical_id >= 1 && physical_id <= CHASSIS_MOTOR_NUM)
-        {
-            //将电流发给对应物理ID的电机
-            currents_to_send[physical_id - 1] = final_currents[i];
-        }
-    }
+    Chassis_Map_Currents_To_Physical(final_currents, currents_to_send);
 		DJI_Motor_Send_Command(&hfdcan2, 0x200, currents_to_send[0], currents_to_send[1], currents_to_send[2], currents_to_send[3]);
 }
 
@@ -600,7 +476,7 @@ void Can_Decode_Task(void const *argument)
 					 	     //底盘电机反馈
                  if(rx_msg.can_id >= 0x201 && rx_msg.can_id <= 0x204)
                  {
-                     update_chassis_motors(rx_msg.data, rx_msg.can_id);
+                     Chassis_Update_Feedback(rx_msg.data, rx_msg.can_id);
                  }
                 //功率计反馈
                 else if (rx_msg.can_id == 0x301)
@@ -773,31 +649,6 @@ void update_gimbal_ui_data(const uint8_t *data)
     UI_Data.pit_deg  = (float)rx_ui.pack.pitch_angle_x100 * 0.01f;
     UI_Data.friction_speed = rx_ui.pack.friction_speed;
 }
-
-
-
-
-
-//更新底盘电机
-void update_chassis_motors(const uint8_t* data, uint32_t can_id)
-{
-    uint8_t physical_id = can_id - 0x200;//算出物理id
-    
-    for(int i = 0; i < CHASSIS_MOTOR_NUM; i++)
-    {
-        if(chassis_motor_physical_id[i] == physical_id)
-        {
-            chassis_motors[i].feedback.angle = (uint16_t)(data[0] << 8) | data[1];
-            chassis_motors[i].feedback.actual_speed = (int16_t)((data[2] << 8) | data[3]);
-            chassis_motors[i].feedback.current = (int16_t)((data[4] << 8) | data[5]);
-            chassis_motors[i].feedback.temperature = data[6];
-					  chassis_motors[i].last_update_tick = osKernelGetTickCount();
-					 	Gimbal_Angle_Update(&chassis_motors[i], 8192.0f);
-            break;
-        }
-    }
-}
-
 
 
 /* USER CODE END 0 */

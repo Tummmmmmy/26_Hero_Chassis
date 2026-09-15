@@ -5,28 +5,6 @@
 #include "chassis_control.h"
 
 
-extern Motor_Controller chassis_motors[CHASSIS_MOTOR_NUM];
-
-
-
-/**
-  * @brief  检测电机是否在线
-  * @param  motor: 电机结构体指针
-  * @param  current_tick: 当前系统时间戳 (ms)
-  * @param  timeout_ms: 超时阈值 (ms)
-  */
-static inline void Check_Motor_Online(Motor_Controller* motor, uint32_t current_tick, uint32_t timeout_ms)
-{
-    if(current_tick - motor->last_update_tick > timeout_ms) 
-    {
-        motor->is_online = false;
-    } 
-    else 
-    {
-        motor->is_online = true;
-    }
-}
-
 
 
 //离线检测任务
@@ -43,10 +21,7 @@ void Monitor_Task(void const * argument)
         uint32_t now = osKernelGetTickCount();
 
 			  //底盘电机
-        for(int i = 0; i < CHASSIS_MOTOR_NUM; i++)
-        {
-            Check_Motor_Online(&chassis_motors[i], now, 200);
-        }
+        Chassis_Update_Online_Status(now);
 
         vTaskDelayUntil(&xLastWakeTime, TimeIncrement);
     }
