@@ -1,0 +1,37 @@
+# Keil / ARMCC build outputs
+*.o
+*.d
+*.crf
+*.axf
+*.hex
+*.bin
+*.map
+*.lst
+*.lnp
+*.iex
+*.dep
+*.build_log.htm
+*.htm
+
+# Keil generated directories
+MDK-ARM/h723_cloud/
+MDK-ARM/DebugConfig/
+MDK-ARM/RTE/
+MDK-ARM/Listings/
+MDK-ARM/Objects/
+MDK-ARM/*.bak
+
+# Keil user/workspace configuration
+*.uvoptx
+*.uvguix.*
+MDK-ARM/.vscode/
+
+# VS Code user settings and logs
+.vscode/
+*.log
+*.lock
+JLinkLog.txt
+
+# Operating System files
+Thumbs.db
+Desktop.ini

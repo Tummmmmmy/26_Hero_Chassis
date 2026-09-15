@@ -1,0 +1,9 @@
+#ifndef MONITOR_TASK_H
+#define MONITOR_TASK_H
+
+#include "main.h"
+
+//¿ÎœﬂºÏ≤‚»ŒŒÒ
+void Monitor_Task(void const * argument);
+
+#endif /* MONITOR_TASK_H */
