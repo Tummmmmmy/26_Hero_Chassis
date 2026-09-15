@@ -21,6 +21,10 @@ typedef enum {
 } LED_State_e;
 
 
-extern volatile LED_State_e led_state;
+//获取系统LED状态(device_task 读取)
+LED_State_e Robot_Get_Led_State(void);
+
+//设置系统LED状态(整机控制流程使用)
+void Robot_Set_Led_State(LED_State_e state);
 
 #endif

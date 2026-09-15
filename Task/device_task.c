@@ -12,7 +12,7 @@ void Device_task(void)
 	while(1)
 	{	
 
-			switch(led_state)
+			switch(Robot_Get_Led_State())
 			{
 					case LED_BOOTING:
 					  	WS2812_Set_Colour(255, 255, 0); //»ÆÉ«

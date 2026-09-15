@@ -93,12 +93,6 @@ Motor_Controller gimbal_yaw_motor;
 volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
 volatile Chassis_UI_t UI_Data = {0,0,0,0};
 
-
-volatile LED_State_e led_state = LED_BOOTING;
-
-
-static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -107,9 +101,6 @@ static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
 
 //初始化电机
 void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan);
-
-//气动上坎
-void chassis_pneumatic_update(float* p_vx);
 
 //底盘控制循环
 void Chassis_Control_Loop(void);
@@ -210,101 +201,6 @@ void Robot_Param_Init(void)
     Motor_Init(&gimbal_yaw_motor, 1 , &hfdcan1);
 }
 
-
-static inline void Front_Cylinder_Extend(void)
-{
-    HAL_GPIO_WritePin(FRONT_GPIO_Port, FRONT_Pin, GPIO_PIN_SET);
-}
-
-static inline void Front_Cylinder_Retract(void)
-{
-    HAL_GPIO_WritePin(FRONT_GPIO_Port, FRONT_Pin, GPIO_PIN_RESET);
-}
-
-static inline void Back_Cylinder_Extend(void)
-{
-    HAL_GPIO_WritePin(BACK_GPIO_Port, BACK_Pin, GPIO_PIN_SET);
-}
-
-static inline void Back_Cylinder_Retract(void)
-{
-    HAL_GPIO_WritePin(BACK_GPIO_Port, BACK_Pin, GPIO_PIN_RESET);
-}
-
-
-
-//气动上坎
-void chassis_pneumatic_update(float* p_vx)
-{
-    static bool has_extend = 0;
-    bool sensor_state = 0;
-	
-	  //判断动作
-    if(chassis.climb_mode == 0)
-		{
-        climb_state = CLIMB_ALL_RETRACT;//全收
-    }
-		else if(chassis.climb_mode == 1)
-		{
-        if(climb_state == CLIMB_ALL_RETRACT)
-				{
-            climb_state = CLIMB_FRONT_EXTEND;
-        }
-    }
-		else if(chassis.climb_mode == 2)
-		{
-        climb_state = CLIMB_BACK_EXTEND;//后伸
-    } 
-
-	
-    switch(climb_state)
-    {
-        case CLIMB_BACK_EXTEND: //UP_前收后伸
-						led_state = LED_CLIMB_BACK;
-					
-			    	sensor_state = HAL_GPIO_ReadPin(CEJU_GPIO_Port, CEJU_Pin);
-				
-            Front_Cylinder_Retract();//前收
-				
-            if(sensor_state)//亮一个是1，亮两个触发是0
-						{
-							if(has_extend == 0) 
-							{
-									Back_Cylinder_Extend();//后伸
-									has_extend = 1;
-							}
-            }
-						else
-						{
-                Back_Cylinder_Retract();//后收
-            }
-            break;
-			
-        case CLIMB_FRONT_EXTEND: //MID_前伸后收
-						led_state = LED_CLIMB_FRONT;
-				
-            Front_Cylinder_Extend();//前伸
-            Back_Cylinder_Retract();//后收
-            
-            has_extend = 0;
-            break;
-
-        case CLIMB_ALL_RETRACT: //DOWM_全收
-        default:
-				  	
-			    	if(chassis.led_cmd == 0) led_state = LED_CLIMB_ACTIVE;
-						else led_state = LED_ENABLED;
-				
-            Front_Cylinder_Retract();//前收
-            Back_Cylinder_Retract(); //后收
-            
-            has_extend = 0;
-            break;
-    }
-}
-
-
-
 #define DATA_ACQUISITION_MODE 0 // 1: 开启数据采集, 0: 关闭
 
 void Chassis_Control_Loop(void)
@@ -330,10 +226,9 @@ void Chassis_Control_Loop(void)
         Chassis_On_Robot_Off();
         DJI_Motor_Send_Command(&hfdcan2, 0x200, 0, 0, 0, 0);
 				
-				Front_Cylinder_Retract();//前收
-				Back_Cylinder_Retract(); //后收
+				Climb_Control_Retract_All();//前后全收
 				
-				led_state = LED_DISABLED; // 失能 -> 红色
+				Robot_Set_Led_State(LED_DISABLED); // 失能 -> 红色
         last_mode = 0;
 				
         return;
@@ -354,7 +249,25 @@ void Chassis_Control_Loop(void)
     float wz = (float)chassis.wz * 0.01f;
 		
 		
-    chassis_pneumatic_update(&vx);
+    //上坎
+    Climb_Control_Update(chassis.climb_mode);
+		
+		//上坎/使能状态指示
+    switch(Climb_Get_Phase())
+    {
+        case CLIMB_BACK_EXTEND:
+            Robot_Set_Led_State(LED_CLIMB_BACK);
+            break;
+
+        case CLIMB_FRONT_EXTEND:
+            Robot_Set_Led_State(LED_CLIMB_FRONT);
+            break;
+
+        default:
+            if(chassis.led_cmd == 0) Robot_Set_Led_State(LED_CLIMB_ACTIVE);
+            else Robot_Set_Led_State(LED_ENABLED);
+            break;
+    }
 		
 		//最大输出电流
 		float current_max_output = 12000.0f;
