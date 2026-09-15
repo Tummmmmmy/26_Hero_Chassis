@@ -35,6 +35,12 @@
 #include "bsp_ano_protocol.h"
 #include "device_task.h"
 #include "can_task.h"
+#include "robot_control.h"
+#include "control_task.h"
+#include "print_task.h"
+#include "monitor_task.h"
+#include "INS_task.h"
+#include "UI_task.h"
 #include "tim.h"
 //#include "math.h"
 
@@ -160,14 +166,8 @@ const osSemaphoreAttr_t anoTxSem_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void All_Init_Run(void *argument);
-extern void Chassis_Control_task(void *argument);
 extern void Print_Task(void *argument);
-extern void SuperCap_Task(void const * argument);
 void Device_Task(void *argument);
-extern void IMU_task(void *argument);
-extern void Client_UI_Task(void *argument);
-extern void Print_Entry_Task(void *argument);
-extern void Monitor_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -215,7 +215,7 @@ void MX_FREERTOS_Init(void) {
   All_InitHandle = osThreadNew(All_Init_Run, NULL, &All_Init_attributes);
 
   /* creation of Chassis_Task */
-  Chassis_TaskHandle = osThreadNew(Chassis_Control_task, NULL, &Chassis_Task_attributes);
+  Chassis_TaskHandle = osThreadNew((osThreadFunc_t)Chassis_Control_task, NULL, &Chassis_Task_attributes);
 
   /* creation of CanDecodeTask */
   CanDecodeTaskHandle = osThreadNew((osThreadFunc_t)Can_Decode_Task, NULL, &CanDecodeTask_attributes);
@@ -233,13 +233,13 @@ void MX_FREERTOS_Init(void) {
   INSTaskHandle = osThreadNew((osThreadFunc_t)IMU_task, NULL, &INSTask_attributes);
 	
   /* creation of UITask */
-  UITaskHandle = osThreadNew(Client_UI_Task, NULL, &UITask_attributes);
+  UITaskHandle = osThreadNew((osThreadFunc_t)Client_UI_Task, NULL, &UITask_attributes);
 	
 	/* creation of PrintEntryTask */
-  PrintEntryTaskHandle = osThreadNew(Print_Entry_Task, NULL, &PrintEntryTask_attributes);
+  PrintEntryTaskHandle = osThreadNew((osThreadFunc_t)Print_Entry_Task, NULL, &PrintEntryTask_attributes);
 	
   /* creation of MonitorTask */
-  MonitorTaskHandle = osThreadNew(Monitor_Task, NULL, &MonitorTask_attributes);
+  MonitorTaskHandle = osThreadNew((osThreadFunc_t)Monitor_Task, NULL, &MonitorTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */

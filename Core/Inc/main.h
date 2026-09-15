@@ -99,8 +99,6 @@ typedef struct
     bool is_online;             //在线状态标志位
 } Motor_Controller;
 
-//初始化
-extern void Robot_Param_Init(void);
 
 /* USER CODE END Includes */
 

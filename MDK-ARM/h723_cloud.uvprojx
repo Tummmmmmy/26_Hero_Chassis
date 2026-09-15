@@ -1229,6 +1229,16 @@
               <FileType>1</FileType>
               <FilePath>..\Task\can_task.c</FilePath>
             </File>
+            <File>
+              <FileName>control_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\control_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>print_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\print_task.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -20,6 +20,11 @@ typedef enum {
     LED_CLIMB_BACK,     //后伸
 } LED_State_e;
 
+//上电初始化所有控制模块(All_Init 任务中调用)
+void Robot_Param_Init(void);
+
+//1ms 控制主循环(Chassis_Control_task 调用)
+void Robot_Control_Loop(void);
 
 //获取系统LED状态(device_task 读取)
 LED_State_e Robot_Get_Led_State(void);
