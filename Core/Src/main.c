@@ -49,6 +49,7 @@
 #include "robot_control.h"
 #include "climb_control.h"
 #include "chassis_control.h"
+#include "can_transmit.h"
 #include "pid.h"
 /* USER CODE END Includes */
 
@@ -88,7 +89,6 @@ Motor_Controller gimbal_yaw_motor;
 //双板通信CAN ID
 #define RX_GIMBAL_COMMAND_ID 0x300
 #define RX_CHASSIS_UI_ID 0x308
-#define TX_GIMBAL_DATA_ID 0x304
 
 
 
@@ -134,12 +134,6 @@ void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan
 
 //更新云台yaw轴角度
 void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range);
-
-//大疆电机控制指令
-void DJI_Motor_Send_Command(FDCAN_HandleTypeDef* hfdcan, uint32_t std_id, int16_t current1, int16_t current2, int16_t current3, int16_t current4);
-
-//发送给云台信息
-void Send_Gimbal_Data(FDCAN_HandleTypeDef* hfdcan); 
 
 //麦轮运动解算
 void Chassis_Movement_Calculation(float Vx, float Vy, float Wz);
@@ -283,102 +277,6 @@ void Gimbal_Angle_Update(Motor_Controller *motor, float encoder_range)
     motor->mechanical_degree = (float)motor->feedback.angle * (360.0f / encoder_range);//编码器值转换为机械角度度数
     motor->last_feedback_angle = motor->feedback.angle;
 }
-
-
-
-/**
-  * @brief  大疆电机控制指令发送
-  * @param  hfdcan: FDCAN句柄指针
-  * @param  std_id: 目标控制CAN ID
-  * @param  current: 对应4个电机的目标电流
-  */
-//大疆电机控制指令
-void DJI_Motor_Send_Command(FDCAN_HandleTypeDef* hfdcan, uint32_t std_id, int16_t current1, int16_t current2, int16_t current3, int16_t current4)
-{
-    FDCAN_TxHeaderTypeDef TxHeader;
-    uint8_t tx_data[8];
-
-    TxHeader.Identifier = std_id; 
-    TxHeader.IdType = FDCAN_STANDARD_ID;
-    TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-    TxHeader.DataLength = FDCAN_DLC_BYTES_8;
-    TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-    TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-    TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
-    TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-    TxHeader.MessageMarker = 0;
-
-    tx_data[0] = (uint8_t)(current1 >> 8);
-    tx_data[1] = (uint8_t)(current1 & 0xFF);
-    tx_data[2] = (uint8_t)(current2 >> 8);
-    tx_data[3] = (uint8_t)(current2 & 0xFF);
-    tx_data[4] = (uint8_t)(current3 >> 8);
-    tx_data[5] = (uint8_t)(current3 & 0xFF);
-    tx_data[6] = (uint8_t)(current4 >> 8);
-    tx_data[7] = (uint8_t)(current4 & 0xFF);
-
-    //直接写入硬件 FIFO (检查是否有空位)
-    if(HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) > 0)
-		{
-        HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &TxHeader, tx_data);
-    }
-}
-
-
-
-
-
-//底盘发给云台的数据
-typedef union
-{
-    uint8_t data[8];
-    
-    __packed struct
-    {
-        float bullet_speed;           //弹速
-        
-        uint32_t shooter_heat   : 10; //当前热量 (0~1023)
-        uint32_t heat_limit     : 9;  //热量上限 (0~511)
-        uint32_t cooling_value  : 7;  //冷却速率 (0~127)
-        uint32_t color          : 1;  //颜色 (0=蓝, 1=红)
-        uint32_t ref_online     : 1;  //裁判系统在线 (0=离线, 1=在线)
-			
-        uint32_t reserved       : 4;  //剩4位
-    } pack;
-} Chassis_To_Gimbal_Msg_t;
-
-//发送给云台信息
-void Send_Gimbal_Data(FDCAN_HandleTypeDef* hfdcan)
-{
-    FDCAN_TxHeaderTypeDef TxHeader;
-    Chassis_To_Gimbal_Msg_t tx_msg = {0};
-
-    TxHeader.Identifier = TX_GIMBAL_DATA_ID;
-    TxHeader.IdType = FDCAN_STANDARD_ID;
-    TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-    TxHeader.DataLength = FDCAN_DLC_BYTES_8;
-    TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-    TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-    TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
-    TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-    TxHeader.MessageMarker = 0;
-
-    tx_msg.pack.bullet_speed = ext_shoot_data.data.bullet_speed;
-
-    tx_msg.pack.shooter_heat  = (ext_power_heat_data.data.shooter_id1_42mm_cooling_heat > 1023) ? 1023 : ext_power_heat_data.data.shooter_id1_42mm_cooling_heat;
-    tx_msg.pack.heat_limit    = (ext_game_robot_state.data.shooter_barrel_heat_limit > 511) ? 511 : ext_game_robot_state.data.shooter_barrel_heat_limit;
-    tx_msg.pack.cooling_value = (ext_game_robot_state.data.shooter_barrel_cooling_value > 127) ? 127 : ext_game_robot_state.data.shooter_barrel_cooling_value;
-
-    tx_msg.pack.color     = is_red_or_blue();
-    tx_msg.pack.ref_online = Judge_IsOnline();
-
-    if(HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) > 0)
-		{
-        HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &TxHeader, tx_msg.data);
-    }
-}
-
-
 
 
 
@@ -637,11 +535,8 @@ void Chassis_Control_Loop(void)
 }
 
 
-#define DM_DIAL_SEND_ID 0x07
+//拨盘相关接收 CAN ID
 #define DM_DIAL_RECEIVE_ID 0x17
-#define DIAL_MOTOR_SPEED_COMMAND_ID 0x207
-
-#define TX_DIAL_FDB_ID 0x302
 #define RX_DIAL_CMD_ID 0x303
 #define RX_DIAL_MODE_ID 0x301
 
@@ -666,22 +561,7 @@ void Can_Decode_Task(void const *argument)
 								//转发云台发来的拨盘速度控制指令
                 else if(rx_msg.can_id == RX_DIAL_CMD_ID)
                 {
-									
-									  FDCAN_TxHeaderTypeDef tx_header;
-                    tx_header.Identifier = DIAL_MOTOR_SPEED_COMMAND_ID;
-                    tx_header.IdType = FDCAN_STANDARD_ID;
-                    tx_header.TxFrameType = FDCAN_DATA_FRAME;
-                    tx_header.DataLength = FDCAN_DLC_BYTES_4;
-                    tx_header.FDFormat = FDCAN_CLASSIC_CAN;
-                    tx_header.BitRateSwitch = FDCAN_BRS_OFF;
-                    tx_header.MessageMarker = 0;
-                    tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-                    tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-
-                    if(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3) > 0)
-                    {
-                        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &tx_header, rx_msg.data);
-                    }
+                    Dial_Relay_Speed_Cmd(&hfdcan3, rx_msg.data);
                 }
 										/*	
 								//转发云台发来的拨盘力矩控制指令
@@ -708,21 +588,7 @@ void Can_Decode_Task(void const *argument)
 								//转发云台发来的拨盘模式指令
                 else if (rx_msg.can_id == RX_DIAL_MODE_ID)
                 {
-                    FDCAN_TxHeaderTypeDef tx_header;
-                    tx_header.Identifier = DM_DIAL_SEND_ID;
-                    tx_header.IdType = FDCAN_STANDARD_ID;
-                    tx_header.TxFrameType = FDCAN_DATA_FRAME;
-                    tx_header.DataLength = FDCAN_DLC_BYTES_8;
-                    tx_header.FDFormat = FDCAN_CLASSIC_CAN;
-                    tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-                    tx_header.BitRateSwitch = FDCAN_BRS_OFF;
-                    tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-                    tx_header.MessageMarker = 0;
-                    
-                    if(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3) > 0)
-										{
-                        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &tx_header, rx_msg.data);
-										}
+                    Dial_Relay_Mode_Cmd(&hfdcan3, rx_msg.data);
                 }
 								else if(rx_msg.can_id == RX_CHASSIS_UI_ID) 
 								{
@@ -752,21 +618,7 @@ void Can_Decode_Task(void const *argument)
             {
                 if(rx_msg.can_id == DM_DIAL_RECEIVE_ID) 
                 {
-									  FDCAN_TxHeaderTypeDef tx_header;
-                    tx_header.Identifier = TX_DIAL_FDB_ID;
-                    tx_header.IdType = FDCAN_STANDARD_ID;
-                    tx_header.TxFrameType = FDCAN_DATA_FRAME;
-                    tx_header.DataLength = FDCAN_DLC_BYTES_8;
-                    tx_header.FDFormat = FDCAN_CLASSIC_CAN;
-                    tx_header.BitRateSwitch = FDCAN_BRS_OFF;
-                    tx_header.MessageMarker = 0;
-                    tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-                    tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-
-                    if(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0)
-                    {
-                        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &tx_header, rx_msg.data);
-                    }
+                    Dial_Relay_Feedback(&hfdcan1, rx_msg.data);
                 }
             }
         }

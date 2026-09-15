@@ -1162,6 +1162,11 @@
           <GroupName>Modules/Comm</GroupName>
           <Files>
             <File>
+              <FileName>can_transmit.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\can_transmit.c</FilePath>
+            </File>
+            <File>
               <FileName>gimbal_link.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Modules\gimbal_link.c</FilePath>
