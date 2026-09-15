@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "bsp_ano_protocol.h"
 #include "bsp_SuperCap.h"
+#include "gimbal_link.h"
 
 #define M3508_REDUCTION_RATIO (14.0f)//3508¼õËÙ±È
 

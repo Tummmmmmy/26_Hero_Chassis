@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H723xx,ARM_MATH_CM7,__FPU_PRESENT=1U,__CC_ARM,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../BSP;../Control;../Algorithm;../Devices;../Modules/Inc;../Modules/Src;../Task;../Motor;../User/Inc;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../BSP;../Control;../Algorithm;../Devices;../Modules;../Modules/Inc;../Modules/Src;../Task;../Motor;../User/Inc;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1134,17 +1134,52 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Modules</GroupName>
+          <GroupName>Modules/Control</GroupName>
+          <Files>
+            <File>
+              <FileName>robot_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\robot_control.c</FilePath>
+            </File>
+            <File>
+              <FileName>chassis_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\chassis_control.c</FilePath>
+            </File>
+            <File>
+              <FileName>climb_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\climb_control.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Modules/Comm</GroupName>
+          <Files>
+            <File>
+              <FileName>gimbal_link.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\gimbal_link.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Modules/Power</GroupName>
+          <Files>
+            <File>
+              <FileName>power_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\Src\power_control.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Modules/Judge</GroupName>
           <Files>
             <File>
               <FileName>RM_JudgeSystem.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Modules\Src\RM_JudgeSystem.c</FilePath>
-            </File>
-            <File>
-              <FileName>power_control.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Modules\Src\power_control.c</FilePath>
             </File>
           </Files>
         </Group>

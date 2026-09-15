@@ -1,6 +1,7 @@
 #include "RM_JudgeSystem.h"
 #include "drv_uart.h"
 #include "bsp_SuperCap.h"
+#include "gimbal_link.h"
 
 
 

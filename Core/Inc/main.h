@@ -119,65 +119,11 @@ typedef struct
     bool is_online;             //在线状态标志位
 } Motor_Controller;
 
-
-
-//双板通信接收结构体
-typedef struct
-{
-    int16_t vx;
-    int16_t vy;
-    int16_t wz;
-    uint8_t mode; //0:失能, 1:使能
-	  uint8_t supercap_req;
-	  uint8_t climb_mode;
-	  uint8_t led_cmd;
-	  uint8_t key_shift;//是否按下shift
-	  uint8_t friction_state;//是否开启摩擦轮 0:关闭, 1:开启
-	  uint8_t friction_speed;
-	  uint8_t is_base_locked;//是否锁定基地
-	  uint8_t battle_mode;   //键鼠模式(0: 失能, 1:跟随, 2: 底盘锁 3: 吊射)
-    uint32_t cnt;
-} RX_Command_t;
-
-
-
-
-//双板通信接收结构体
-typedef struct
-{
-    float yaw_deg;
-    float pit_deg;
-	  uint16_t friction_speed;
-    uint32_t cnt;
-} RX_UI_t;
-
-
-
-
-//机器人LED状态枚举
-typedef enum {
-    LED_BOOTING,        //启动中
-    LED_DISABLED,       //失能(红色)
-    LED_ENABLED,        //使能(蓝色)
-	  LED_CLIMB_ACTIVE,   //
-    LED_CLIMB_FRONT,    //前伸
-    LED_CLIMB_BACK,     //后伸
-} LED_State_e;
-
-extern volatile LED_State_e led_state;
-
-
-
-
 //初始化
 extern void Robot_Param_Init(void);
 
 //FDCAN通用配置
 extern void BSP_FDCAN_Config(void);
-
-#define CHASSIS_MOTOR_NUM 4
-extern volatile RX_Command_t chassis;
-extern volatile RX_UI_t UI_Data;
 
 /* USER CODE END Includes */
 

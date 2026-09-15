@@ -2,6 +2,7 @@
 #include "cmsis_os.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "chassis_control.h"
 
 
 extern Motor_Controller chassis_motors[CHASSIS_MOTOR_NUM];

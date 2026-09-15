@@ -1,6 +1,7 @@
 #include "device_task.h"
 #include "ws2812.h"
 #include "cmsis_os2.h"
+#include "robot_control.h"
 
 
 void Device_task(void)

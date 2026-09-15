@@ -3,6 +3,7 @@
 #include <string.h>
 #include "bsp_power_meter.h"
 #include "RM_JudgeSystem.h"
+#include "gimbal_link.h"
 
 
 

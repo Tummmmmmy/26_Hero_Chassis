@@ -43,6 +43,11 @@
 #include "RM_JudgeSystem.h"
 #include "INS_task.h"
 #include "Ramp.h"
+
+#include "gimbal_link.h"
+#include "robot_control.h"
+#include "climb_control.h"
+#include "chassis_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,20 +112,14 @@ float chassis_MaxOutput = 12000;//最大输出电流
 
 
 //接收的云台数据
-volatile RX_Command_t chassis = {0,0,0,0,0,0,1,0,0};
-volatile RX_UI_t UI_Data = {0,0,0,0};
+volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
+volatile Chassis_UI_t UI_Data = {0,0,0,0};
 
 
 volatile LED_State_e led_state = LED_BOOTING;
 
 
-typedef enum {
-    CLIMB_ALL_RETRACT,  //全收
-    CLIMB_FRONT_EXTEND, //前伸
-    CLIMB_BACK_EXTEND   //后伸
-} Climb_state_e;
-
-static Climb_state_e climb_state = CLIMB_ALL_RETRACT;
+static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
 
 /* USER CODE END PM */
 
