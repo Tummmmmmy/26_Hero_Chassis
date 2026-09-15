@@ -13,12 +13,6 @@
 power_control_t power_controller;
 
 
-//初始化pid
-static void pid_init(pid_controller_t* pid, float kp, float ki, float kd, float max_i_out, float max_output);
-
-//位置式PID计算
-static void pid_calculate(pid_controller_t* pid);
-
 //计算最终电流值
 static float calculate_current_by_power(float a, float b, float c, float target_direction);
 
@@ -39,7 +33,7 @@ float pid_max_output = 80.0f;//输出限幅
 //初始化功率控制
 void power_control_init(void)
 {
-    pid_init(&power_controller.buffer_pid, buffer_pid_kp, buffer_pid_ki, buffer_pid_kd, pid_max_i_out, pid_max_output);
+    PID_Init(&power_controller.buffer_pid, buffer_pid_kp, buffer_pid_ki, buffer_pid_kd, pid_max_i_out, pid_max_output);
     power_controller.buffer_pid_target = 50.0f;//缓冲能量目标值
 
     //功率环参数
@@ -119,13 +113,11 @@ void power_control_run(const Motor_Controller* motors, const int16_t* target_cur
     }
     else
     {
-        power_controller.buffer_pid.target = power_controller.buffer_pid_target;
-        power_controller.buffer_pid.feedback = power_controller.referee_power_buffer;
+        //缓冲能量PID：目标值 - 当前缓冲能量
+        float buffer_pid_output = PID_Calculate(&power_controller.buffer_pid, power_controller.buffer_pid_target, power_controller.referee_power_buffer);
 
-				pid_calculate(&power_controller.buffer_pid);
-
-			  //最终功率上限 = 裁判系统功率上限 + PID调整量
-				loop->final_power_limit = power_controller.referee_power_limit + power_controller.buffer_pid.output;
+        //最终功率上限 = 裁判系统功率上限 + PID调整量
+        loop->final_power_limit = power_controller.referee_power_limit + buffer_pid_output;
     }
 
     
@@ -321,46 +313,6 @@ static float calculate_current_by_power(float a, float b, float c, float target_
         else return 0.0f;
     }
 }
-
-
-
-
-//初始化pid
-static void pid_init(pid_controller_t* pid, float kp, float ki, float kd, float max_i_out, float max_output)
-{
-    memset(pid, 0, sizeof(pid_controller_t));
-    pid->kp = kp;
-    pid->ki = ki;
-    pid->kd = kd;
-    pid->max_i_out = max_i_out;
-    pid->max_output = max_output;
-}
-
-
-
-//位置式PID计算
-static void pid_calculate(pid_controller_t* pid)
-{
-    pid->err = pid->target - pid->feedback ;
-
-    pid->p_out = pid->kp * pid->err;
-
-    //积分限幅
-    pid->i_out += pid->ki * pid->err;
-    if (pid->i_out > pid->max_i_out) pid->i_out = pid->max_i_out;
-    else if (pid->i_out < -pid->max_i_out) pid->i_out = -pid->max_i_out;
-
-    pid->d_out = pid->kd * (pid->err - pid->pre_err);
-
-    pid->output = pid->p_out + pid->i_out + pid->d_out;
-    
-    //输出限幅
-    if(pid->output > pid->max_output) pid->output = pid->max_output;
-    else if(pid->output < -pid->max_output) pid->output = -pid->max_output;
-
-    pid->pre_err = pid->err;
-}
-
 
 
 //获取功率控制后的最终电流

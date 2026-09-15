@@ -34,6 +34,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "cmsis_os2.h"
 #include "fdcan.h"
+#include "pid.h"
 #include <stdbool.h>
 
 extern osMessageQueueId_t canRxQueueHandle;
@@ -47,27 +48,6 @@ typedef struct
     uint8_t data[8];
   	uint8_t  dlc;
 } CAN_Rx_Message_t;
-
-
-
-//PID控制器结构体
-typedef struct
-{
-    float target;
-    float measured;
-    float error;
-    float pre_error;
-    float pre_measured;
-    float err_beforeLast;
-    float p_out;
-    float i_out;
-    float d_out;
-    float output;
-    float Kp, Ki, Kd;
-    float Integral_Limit;
-    float MaxOutput;
-    float integral_separation_threshold;//积分分离
-} PID_Controller;
 
 
 

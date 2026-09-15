@@ -4,30 +4,9 @@
 #include "bsp_power_meter.h"
 #include "struct_typedef.h"
 #include "main.h"
+#include "pid.h"
 
 #define USE_RLS_ONLINE_IDENTIFICATION 0//0:固定参数 ,1:RLS 
-
-
-//PID控制器结构体
-typedef struct
-{
-    float kp;
-    float ki;
-    float kd;
-
-    float target;      //目标值
-    float feedback;    //反馈值
-    float err;         //误差
-    float pre_err;
-
-    float p_out;
-    float i_out;
-    float d_out;
-    float output;
-
-    float max_i_out;
-    float max_output;
-} pid_controller_t;
 
 
 
@@ -63,7 +42,7 @@ typedef struct
     uint8_t referee_offline_flag;   //离线标志
 
     //电容环
-    pid_controller_t buffer_pid;    //缓冲能量PID
+    PID_Controller buffer_pid;    //缓冲能量PID
     float buffer_pid_target;        //缓冲能量目标值
     //功率环
     chassis_power_control_t power_loop;

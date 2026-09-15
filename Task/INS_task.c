@@ -8,35 +8,49 @@
 #include "INS_task.h"
 #include "MahonyAHRS.h"
 #include "bsp_buzzer.h"
-
 #include "pid.h"
-#define cheat TRUE  //作弊模式 去掉较小的gyro值
-#define correct_Time_define 1000    //上电去0飘 1000次取平均
-#define temp_times 300       //探测温度阈值
 
 
-extern osThreadId_t INSTaskHandle;
+#define USE_HARDCODED_BIAS 1         //0:开机静态采样零漂  1:硬编码零偏，开机秒启动
+
+#define cheat TRUE                   //作弊模式 去掉较小的gyro值
+#define correct_Time_define 10000    //上电去0飘 10000次取平均
+#define temp_times 300               //探测温度阈值
+float RefTemp = 40.0f;               //目标温度
 
 
-volatile uint8_t imu_ready_flag = 0; 
 
-pid_struct_t Temperature_PID={0};
 
+#if (USE_HARDCODED_BIAS == 1)
+    //硬编码零偏
+    volatile uint8_t imu_ready_flag = 1; 
+    uint8_t attitude_flag = 3;//跳过温控等待和采样，直接进解算
+
+    float gyro_correct[3]={-6.73255545e-06f, 4.34518988e-05f,  0.00309983929f}; //roll,pitch,yaw
+#else
+    //静态采样零漂
+    volatile uint8_t imu_ready_flag = 0; 
+    uint8_t attitude_flag = 0; 
+    float gyro_correct[3] = {0.0f, 0.0f, 0.0f}; 
+#endif
+
+
+
+
+PID_Controller Temperature_PID={0};
 float gyro[3], accel[3], temp;
-float gyro_correct[3]={0};
-float RefTemp = 40;   //Destination
 float roll,pitch,yaw=0;
 float total_yaw;
 float last_yaw;
 int32_t turnCounts;
-uint8_t attitude_flag=0;
 uint32_t correct_times=0;
+uint8_t IMU_level = 0;
 
 static void INS_Init(void)
 {
 	
     IMU_QuaternionEKF_Init(10, 0.001, 10000000, 1, 0.001f,0); //ekf初始化
-		pid_init(&Temperature_PID,1600,50,40,200,2000); //加热pidlimit
+		PID_Init(&Temperature_PID,1600,50,40,200,2000); //加热pidlimit
 	
 		Mahony_Init(1000);  //mahony姿态解算初始化
     // imu heat init
@@ -47,9 +61,9 @@ static void INS_Init(void)
 uint32_t temp_temperature=0;
 static void IMU_Temperature_Ctrl()
 {
-	  pid_calc(&Temperature_PID,RefTemp,temp); //温度pid  //需要调一下pid使得温度在40°左右
-		temp_temperature=(uint32_t)Temperature_PID.output; 
-		if(Temperature_PID.output<0)
+	  float temp_pid_out = PID_Calculate(&Temperature_PID,RefTemp,temp); //温度pid
+		temp_temperature=(uint32_t)temp_pid_out; 
+		if(temp_pid_out<0)
 		{
 			temp_temperature=0;
 		}
@@ -84,6 +98,7 @@ static void INS_Task(void)
 			gyro[1]-=gyro_correct[1];
 			gyro[2]-=gyro_correct[2];
 			
+			
 			#if cheat              //作弊 可以让yaw很稳定 去掉比较小的值
 				if(fabsf(gyro[2])<0.003f)
 					gyro[2]=0;
@@ -94,7 +109,7 @@ static void INS_Task(void)
 			IMU_QuaternionEKF_Update(gyro[0],gyro[1],gyro[2],accel[0],accel[1],accel[2]);
 			//HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,GPIO_PIN_RESET);
 			//===============================================================================	
-				
+						
 			//=================================================================================
 			//mahony姿态解算部分
 			//HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,GPIO_PIN_SET);
@@ -109,21 +124,8 @@ static void INS_Task(void)
 				
 			total_yaw = Get_Total_Yaw() + 180.0f;
 			
-			imu_ready_flag = 1; //数据准备就绪
 			
-//				  if (yaw - last_yaw < -300.0f)
-//					{
-//							turnCounts++;
-//					}
-//					if (last_yaw - yaw < -300.0f)
-//					{
-//							turnCounts--;
-//					}
-//					
-//					total_yaw = yaw + turnCounts * 360.0f;
-
-//					last_yaw = yaw;
-			//==============================================================================
+			imu_ready_flag = 1;//数据准备就绪
 		}
 		else if(attitude_flag==2)   //状态1 开始1000次的陀螺仪0飘初始化
 		{
@@ -139,14 +141,14 @@ static void INS_Task(void)
 					gyro_correct[2]/=correct_Time_define;
 					attitude_flag=3; //go to 2 state
 					
-					Set_BuzzerMode(ZERO_TIME);//陀螺仪校准结束，蜂鸣器不叫
+//					Set_BuzzerMode(ZERO_TIME);//陀螺仪校准结束，蜂鸣器不叫
 					imu_ready_flag = 0;
 				}
 		}
 
     // temperature control
 		count++;
-    if (count >= 10)
+    if(count >= 10)
     {
    			count = 0;
 			
@@ -154,71 +156,70 @@ static void INS_Task(void)
 				{
 					attitude_flag = 1;
 					
-					Set_BuzzerMode(ONE_TIME);//陀螺仪校准中，蜂鸣器持续叫
+//					Set_BuzzerMode(ONE_TIME);//陀螺仪校准中，蜂鸣器持续叫
 				}
         // 100hz 的温度控制pid
         IMU_Temperature_Ctrl();
 				
-				static uint32_t temp_Ticks=0;
-				if((fabsf(temp-RefTemp)<0.5f)&&attitude_flag==1) //接近额定温度之差小于0.5° 开始计数
-				{
-					temp_Ticks++;
-	
-					if(temp_Ticks>temp_times)   //计数达到一定次数后 才进入0飘初始化 说明温度已经达到目标
-					{
-						attitude_flag= 2;  //go to correct state
-					}
-				}
+				
+				
+				static uint32_t total_wait_time = 0;
+				total_wait_time++; 
+        //注意：这里进一次是 10ms
+        //1000次 = 10秒, 2000次 = 20秒
+				
+            float current_tolerance = 0.5f;
+
+            if(total_wait_time < 3000) 
+            {
+                current_tolerance = 0.5f;
+							  IMU_level = 1;
+            }
+            else if (total_wait_time < 4000) 
+            {
+                current_tolerance = 3.0f; 
+							  IMU_level = 2;
+            }
+            else 
+            {
+                current_tolerance = 20.0f;
+							  IMU_level = 3;
+            }
+
+            static uint32_t temp_Ticks = 0;
+            
+						if((fabsf(temp-RefTemp)<current_tolerance) && attitude_flag==1)//接近目标温度 开始计数
+						{
+							temp_Ticks++;
+			
+							if(temp_Ticks > temp_times)
+							{
+								attitude_flag= 2;//go to correct state
+							}
+						}				
+            else
+            {
+                temp_Ticks = 0; 
+            }	
     }
 }
 
 
 
-//void IMU_task(void const * argument)
-//{
-//    INS_Init();
-//	
-//	  TickType_t xLastWakeTime;
-//	
-//	  const TickType_t xFrequency = pdMS_TO_TICKS(1); 
-//	
-//	  xLastWakeTime = xTaskGetTickCount();
-//    /* Infinite loop */
-//    for (;;)
-//    {
-//        INS_Task();
-//			
-//        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-//    }
-//}
 void IMU_task(void const * argument)
 {
-//    osThreadSetPriority(INSTaskHandle, osPriorityRealtime7);
-    
-    INS_Init();
-    
-//    //高频校准
-//    while(imu_ready_flag == 0) 
-//    {
-//        INS_Task();
-//        osDelay(1); 
-//    }
+	  osDelay (500);
+	
+    INS_Init(); 
 
-//    // 降级
-//    osThreadSetPriority(INSTaskHandle, osPriorityLow4); 
-    
     //低频运行
     for (;;)
     {
-        INS_Task(); 
-        osDelay(10); 
+        INS_Task();
+			
+        osDelay(5); 
     }
 }
-
-
-
-
-
 
 
 /**
@@ -238,4 +239,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     {
 
     }
+
 }
+

@@ -48,6 +48,7 @@
 #include "robot_control.h"
 #include "climb_control.h"
 #include "chassis_control.h"
+#include "pid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -129,19 +130,6 @@ static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
 
 //初始化电机
 void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan);
-
-//初始化PID
-void PID_Init(PID_Controller *pid, float Kp, float Ki, float Kd, float Integral_Limit, float MaxOutput);
-
-//初始化电机参数
-void Robot_Param_Init(void);
-
-//位置式pid计算
-float PID_Calculate(PID_Controller *pid, float target, float measured);
-
-float PID_Cal_Enhanced(PID_Controller *pid, float target, float measured);
-
-float PID_Cal_Increment(PID_Controller *pid, float target, float measured);
 
 //FDCAN配置
 void BSP_FDCAN_Config(void);
@@ -256,23 +244,6 @@ void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan
 }
 
 
-
-float apart = 0.0f;
-//初始化PID
-void PID_Init(PID_Controller *pid, float Kp, float Ki, float Kd, float Integral_Limit, float MaxOutput)
-{
-    memset(pid, 0, sizeof(PID_Controller));
-    pid->Kp = Kp;
-    pid->Ki = Ki;
-    pid->Kd = Kd;
-    pid->MaxOutput = MaxOutput;
-    pid->Integral_Limit = Integral_Limit;
-    
-    pid->integral_separation_threshold = apart;//积分分离阈值
-}
-
-
-
 //初始化电机参数
 void Robot_Param_Init(void)
 {
@@ -291,98 +262,6 @@ void Robot_Param_Init(void)
 		//Yaw(LK)
     Motor_Init(&gimbal_yaw_motor, 1 , &hfdcan1);
 }
-
-
-
-
-//位置式pid计算
-float PID_Calculate(PID_Controller *pid, float target, float measured )
-{
-    pid->target = target;
-    pid->measured = measured;
-    pid->error = pid->target - pid->measured;
-
-    pid->p_out = pid->Kp * pid->error;
-
-    pid->i_out += pid->Ki * pid->error;
-
-    if(pid->i_out > pid->Integral_Limit) pid->i_out = pid->Integral_Limit;//积分限幅
-    else if(pid->i_out < -pid->Integral_Limit) pid->i_out = -pid->Integral_Limit;
-
-    pid->d_out = pid->Kd * (pid->error - pid->pre_error);
-
-    float output = pid->p_out + pid->i_out + pid->d_out;
-
-    if(output > pid->MaxOutput) {output = pid->MaxOutput;}//输出限幅
-    else if(output < -pid->MaxOutput) {output = -pid->MaxOutput;}
-
-    pid->pre_error = pid->error;
-    return output;
-}
-
-
-float PID_Cal_Enhanced(PID_Controller *pid, float target, float measured)
-{
-    pid->target = target;
-    pid->measured = measured;
-    pid->error = pid->target - pid->measured;
-
-    pid->p_out = pid->Kp * pid->error;
-
-    //积分分离
-    if (fabs(pid->error) < pid->integral_separation_threshold)
-    {
-        pid->i_out += pid->Ki * pid->error;
-        if (pid->i_out > pid->Integral_Limit) pid->i_out = pid->Integral_Limit;
-        if (pid->i_out < -pid->Integral_Limit) pid->i_out = -pid->Integral_Limit;
-    }
-    else
-    {
-        pid->i_out = 0.0f; //误差大时，直接清零积分
-    }
-
-    //微分先行
-    pid->d_out = pid->Kd * (measured - pid->pre_measured); // 【修正】应该是 (当前 - 上次)
-
-    // 总输出
-    pid->output = pid->p_out + pid->i_out - pid->d_out;
-
-    pid->pre_error = pid->error;
-    pid->pre_measured = pid->measured;
-
-    //输出限幅
-    if (pid->output > pid->MaxOutput) pid->output = pid->MaxOutput;
-    if (pid->output < -pid->MaxOutput) pid->output = -pid->MaxOutput;
-
-    return pid->output;
-}
-
-
-
-float PID_Cal_Increment(PID_Controller *pid, float target, float measured)
-{
-    pid->target = target;
-    pid->measured = measured;
-    pid->error = pid->target - pid->measured;
-
-    pid->p_out = pid->Kp * (pid->error - pid->pre_error);
-    pid->i_out = pid->Ki * pid->error;
-    pid->d_out = pid->Kd * (pid->error - 2.0f * pid->pre_error + pid->err_beforeLast);
-    
-    float delta_output = pid->p_out + pid->i_out + pid->d_out;
-    
-    pid->output += delta_output;
-
-    //输出限幅
-    if (pid->output > pid->MaxOutput) pid->output = pid->MaxOutput;
-    if (pid->output < -pid->MaxOutput) pid->output = -pid->MaxOutput;
-
-    pid->err_beforeLast = pid->pre_error;
-    pid->pre_error = pid->error;
-
-    return pid->output;
-}
-
 
 
 //更新云台yaw轴角度
