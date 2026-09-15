@@ -37,8 +37,12 @@ void CAN_Rx_Route(CAN_Rx_Message_t* msg)
             Dial_Relay_Speed_Cmd(&hfdcan3, msg->data);
         }
         /* 【历史备用路径】拨盘力矩转发: 云台早期也下发过力矩指令(同为 0x303),
-           当前拨盘走速度控制; 若改回力矩转发, 把上面的 Dial_Relay_Speed_Cmd(...)
-           换成 BSP_CAN_Send(&hfdcan3, DM_DIAL_SEND_ID, msg->data, FDCAN_DLC_BYTES_8);
+           当前拨盘走速度控制, 若要改回力矩转发, 把上面的速度转发分支换成下面这段:
+        //转发云台发来的拨盘力矩控制指令
+        else if(msg->can_id == RX_DIAL_CMD_ID)
+        {
+            BSP_CAN_Send(&hfdcan3, DM_DIAL_SEND_ID, msg->data, FDCAN_DLC_BYTES_8);
+        }
            (DM_DIAL_SEND_ID 见 can_transmit.h; 启用时本文件需 include "bsp_can.h") */
         //转发云台发来的拨盘模式指令
         else if (msg->can_id == RX_DIAL_MODE_ID)

@@ -1,7 +1,7 @@
 #ifndef BSP_POWER_METER_H
 #define BSP_POWER_METER_H
 
-#include "struct_typedef.h"
+#include <stdint.h>
 
 //功率计反馈数据结构体
 typedef struct

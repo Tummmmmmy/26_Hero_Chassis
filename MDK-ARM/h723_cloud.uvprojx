@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32H723xx,ARM_MATH_CM7,__FPU_PRESENT=1U,__CC_ARM,ARM_MATH_MATRIX_CHECK,ARM_MATH_ROUNDING</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../BSP;../Control;../Algorithm;../Devices;../Modules;../Modules/Inc;../Modules/Src;../Task;../Motor;../User/Inc;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../BSP;../Algorithm;../Devices;../Modules;../Task;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1116,16 +1116,8 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Control</GroupName>
-        </Group>
-        <Group>
           <GroupName>Devices</GroupName>
           <Files>
-            <File>
-              <FileName>ws2812.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Devices\ws2812.c</FilePath>
-            </File>
             <File>
               <FileName>bmi088driver.c</FileName>
               <FileType>1</FileType>
@@ -1135,6 +1127,11 @@
               <FileName>bmi088middleware.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Devices\bmi088middleware.c</FilePath>
+            </File>
+            <File>
+              <FileName>ws2812.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Devices\ws2812.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1162,6 +1159,11 @@
           <GroupName>Modules/Comm</GroupName>
           <Files>
             <File>
+              <FileName>can_receive.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\can_receive.c</FilePath>
+            </File>
+            <File>
               <FileName>can_transmit.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Modules\can_transmit.c</FilePath>
@@ -1171,11 +1173,6 @@
               <FileType>1</FileType>
               <FilePath>..\Modules\gimbal_link.c</FilePath>
             </File>
-            <File>
-              <FileName>can_receive.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Modules\can_receive.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1184,7 +1181,7 @@
             <File>
               <FileName>power_control.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Modules\Src\power_control.c</FilePath>
+              <FilePath>..\Modules\power_control.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1194,12 +1191,9 @@
             <File>
               <FileName>RM_JudgeSystem.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Modules\Src\RM_JudgeSystem.c</FilePath>
+              <FilePath>..\Modules\RM_JudgeSystem.c</FilePath>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>Motor</GroupName>
         </Group>
         <Group>
           <GroupName>Task</GroupName>
@@ -1210,19 +1204,9 @@
               <FilePath>..\Task\INS_task.c</FilePath>
             </File>
             <File>
-              <FileName>device_task.c</FileName>
+              <FileName>control_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Task\device_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>UI_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Task\UI_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>monitor_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Task\monitor_task.c</FilePath>
+              <FilePath>..\Task\control_task.c</FilePath>
             </File>
             <File>
               <FileName>can_task.c</FileName>
@@ -1230,9 +1214,19 @@
               <FilePath>..\Task\can_task.c</FilePath>
             </File>
             <File>
-              <FileName>control_task.c</FileName>
+              <FileName>monitor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Task\control_task.c</FilePath>
+              <FilePath>..\Task\monitor_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>UI_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\UI_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>device_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\device_task.c</FilePath>
             </File>
             <File>
               <FileName>print_task.c</FileName>
@@ -1872,16 +1866,6 @@
                   </Cads>
                 </FileArmAds>
               </FileOption>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>User</GroupName>
-          <Files>
-            <File>
-              <FileName>struct_typedef.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\User\Inc\struct_typedef.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -2,7 +2,7 @@
 #define POWER_CONTROL_H
 
 #include "bsp_power_meter.h"
-#include "struct_typedef.h"
+#include <stdint.h>
 #include "main.h"
 #include "pid.h"
 
