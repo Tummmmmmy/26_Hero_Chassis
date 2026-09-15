@@ -3,13 +3,21 @@
  * @brief 底盘板与云台板的板间链路数据契约
  *
  * 云台板通过 CAN 下发整机指令(0x300)与 UI 数据(0x308), 本模块承载这两份
- * 输入快照的类型定义。字段与云台板发送侧的 Send_Chassis_Command /
- * Send_Chassis_UI_Data 一一对应, 不得单独修改。
+ * 输入快照的类型定义与解码, 并维护链路在线状态(200ms 超时)。字段与云台板
+ * 发送侧的 Send_Chassis_Command / Send_Chassis_UI_Data 一一对应, 不得单独修改。
  */
 #ifndef GIMBAL_LINK_H
 #define GIMBAL_LINK_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+//双板通信CAN ID
+#define RX_GIMBAL_COMMAND_ID 0x300
+#define RX_CHASSIS_UI_ID 0x308
+
+//板间链路离线判定超时(ms)
+#define GIMBAL_LINK_OFFLINE_TIMEOUT_MS 200
 
 //双板通信接收结构体
 typedef struct
@@ -40,5 +48,17 @@ typedef struct
 
 extern volatile Chassis_Cmd_t chassis;
 extern volatile Chassis_UI_t UI_Data;
+
+//解码云台发来的整机指令(0x300)
+void Gimbal_Link_Decode_Command(const uint8_t *data);
+
+//解码云台发来的UI数据包(0x308)
+void Gimbal_Link_Decode_UI(const uint8_t *data);
+
+//双板链路在线巡检(Monitor_Task 调用)
+void Gimbal_Link_Update_Online_Status(uint32_t current_tick);
+
+//双板链路是否在线
+bool Gimbal_Link_Is_Online(void);
 
 #endif

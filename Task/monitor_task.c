@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "chassis_control.h"
+#include "gimbal_link.h"
 
 
 
@@ -22,6 +23,9 @@ void Monitor_Task(void const * argument)
 
 			  //µ×ÅÌµç»ú
         Chassis_Update_Online_Status(now);
+
+			  //Ë«°åÁ´Â·(ÔÆÌ¨ -> µ×ÅÌ)
+        Gimbal_Link_Update_Online_Status(now);
 
         vTaskDelayUntil(&xLastWakeTime, TimeIncrement);
     }

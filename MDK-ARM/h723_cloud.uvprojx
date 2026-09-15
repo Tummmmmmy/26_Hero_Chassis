@@ -1171,6 +1171,11 @@
               <FileType>1</FileType>
               <FilePath>..\Modules\gimbal_link.c</FilePath>
             </File>
+            <File>
+              <FileName>can_receive.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\can_receive.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1218,6 +1223,11 @@
               <FileName>monitor_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Task\monitor_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>can_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\can_task.c</FilePath>
             </File>
           </Files>
         </Group>

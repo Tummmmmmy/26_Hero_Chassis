@@ -85,14 +85,6 @@ const float DEG_TO_ENCODER = 8192.0f / 360.0f;
 Motor_Controller gimbal_yaw_motor;
 
 
-//双板通信CAN ID
-#define RX_GIMBAL_COMMAND_ID 0x300
-#define RX_CHASSIS_UI_ID 0x308
-
-//接收的云台数据
-volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
-volatile Chassis_UI_t UI_Data = {0,0,0,0};
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -105,17 +97,8 @@ void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan
 //底盘控制循环
 void Chassis_Control_Loop(void);
 
-//CAN接收解码任务
-void Can_Decode_Task(void const *argument);
-
 //控制任务
 void Chassis_Control_task(void const * argument);
-
-//更新云台指令
-void update_gimbal_command(const uint8_t *data);
-
-//更新云台发来的UI数据包
-void update_gimbal_ui_data(const uint8_t *data);
 
 //更新云台Yaw电机
 void update_gimbal_yaw(const uint8_t* data);
@@ -221,7 +204,7 @@ void Chassis_Control_Loop(void)
 		
 		
 		//失能
-    if(chassis.mode == 0 || (ext_game_robot_state.InfoUpdataFlag != 0 && ext_game_robot_state.data.mains_power_chassis_output == 0))
+    if(chassis.mode == 0 || !Gimbal_Link_Is_Online() || (ext_game_robot_state.InfoUpdataFlag != 0 && ext_game_robot_state.data.mains_power_chassis_output == 0))
     {
         Chassis_On_Robot_Off();
         DJI_Motor_Send_Command(&hfdcan2, 0x200, 0, 0, 0, 0);
@@ -324,100 +307,6 @@ void Chassis_Control_Loop(void)
 }
 
 
-//拨盘相关接收 CAN ID
-#define DM_DIAL_RECEIVE_ID 0x17
-#define RX_DIAL_CMD_ID 0x303
-#define RX_DIAL_MODE_ID 0x301
-
-
-//CAN接收解码任务
-void Can_Decode_Task(void const *argument)
-{
-    CAN_Rx_Message_t rx_msg;
-
-    for(;;)
-    {
-        if(osMessageQueueGet(canRxQueueHandle, &rx_msg, NULL, osWaitForever) == osOK)
-        {
-            if(rx_msg.hfdcan->Instance == FDCAN1)
-            {
-								//双板通信
-                if(rx_msg.can_id == RX_GIMBAL_COMMAND_ID) 
-                {
-                    update_gimbal_command(rx_msg.data);
-                }
-					
-								//转发云台发来的拨盘速度控制指令
-                else if(rx_msg.can_id == RX_DIAL_CMD_ID)
-                {
-                    Dial_Relay_Speed_Cmd(&hfdcan3, rx_msg.data);
-                }
-										/*	
-								//转发云台发来的拨盘力矩控制指令
-                else if(rx_msg.can_id == RX_DIAL_CMD_ID)
-                {
-									
-									  FDCAN_TxHeaderTypeDef tx_header;
-                    tx_header.Identifier = 0x07;
-                    tx_header.IdType = FDCAN_STANDARD_ID;
-                    tx_header.TxFrameType = FDCAN_DATA_FRAME;
-                    tx_header.DataLength = FDCAN_DLC_BYTES_8;
-                    tx_header.FDFormat = FDCAN_CLASSIC_CAN;
-                    tx_header.BitRateSwitch = FDCAN_BRS_OFF;
-                    tx_header.MessageMarker = 0;
-                    tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-                    tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-
-                    if(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3) > 0)
-                    {
-                        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &tx_header, rx_msg.data);
-                    }
-                }
-								*/
-								//转发云台发来的拨盘模式指令
-                else if (rx_msg.can_id == RX_DIAL_MODE_ID)
-                {
-                    Dial_Relay_Mode_Cmd(&hfdcan3, rx_msg.data);
-                }
-								else if(rx_msg.can_id == RX_CHASSIS_UI_ID) 
-								{
-									  update_gimbal_ui_data(rx_msg.data);
-								}
-            }
-            else if(rx_msg.hfdcan->Instance == FDCAN2)
-            {
-					 	     //底盘电机反馈
-                 if(rx_msg.can_id >= 0x201 && rx_msg.can_id <= 0x204)
-                 {
-                     Chassis_Update_Feedback(rx_msg.data, rx_msg.can_id);
-                 }
-                //功率计反馈
-                else if (rx_msg.can_id == 0x301)
-                {
-                    power_meter_decode(rx_msg.data);
-                }
-								//超电反馈
-								else if (rx_msg.can_id == SUPERCAP_RX_ID)
-								{
-										supercap_rx_decode(rx_msg.data, rx_msg.dlc);
-								}
-            }
-						//转发拨盘反馈给云台
-             else if(rx_msg.hfdcan->Instance == FDCAN3)
-            {
-                if(rx_msg.can_id == DM_DIAL_RECEIVE_ID) 
-                {
-                    Dial_Relay_Feedback(&hfdcan1, rx_msg.data);
-                }
-            }
-        }
-    }
-}
-
-
-
-
-
 //控制任务
 void Chassis_Control_task(void const * argument)
 {
@@ -472,97 +361,6 @@ void Print_Entry_Task(void const * argument)
 				vTaskDelayUntil(&xLastWakeTime, TimeIncrement);
 		}
 }
-
-
-
-
-
-
-
-
-//云台发底盘数据
-typedef union
-{
-    uint8_t data[8];
-    
-    __packed struct
-    {
-        int64_t  vx : 16;             //现在先16后面改成15(-16384 ~ 16383)（wz变速时不够）
-        int64_t  vy : 16; 
-        int64_t  wz : 16; 
-        
-        uint64_t mode           : 1;  //底盘状态(0=失能, 1=使能)
-        uint64_t supercap_req   : 1;  //超电(0=关, 1=开)
-        uint64_t climb_cmd      : 2;  //上坎指令(0~3)(0=全收, 1=前伸, 2=后伸)
-        uint64_t led_cmd        : 1;  //LED指令
-        uint64_t key_shift      : 1;  //Shift键状态(0=松开, 1=按下)
-        uint64_t friction_state : 2;  // 0: 关, 1: 低速 (12m/s), 2: 高速 (16m/s)
-			  uint64_t is_base_locked : 1;  //基地已锁定
-			
-			  uint64_t battle_mode    : 2;  //键鼠模式(0: 失能, 1:跟随, 2: 底盘锁 3: 吊射)
-        
-        uint64_t reserved       : 5; //剩5位
-    } pack;
-} Gimbal_To_Chassis_Msg_t;
-
-
-//更新云台指令
-void update_gimbal_command(const uint8_t *data)
-{
-    Gimbal_To_Chassis_Msg_t rx_msg;
-    
-    memcpy(rx_msg.data, data, 8);
-    
-    chassis.vx             = rx_msg.pack.vx;
-    chassis.vy             = rx_msg.pack.vy;
-    chassis.wz             = rx_msg.pack.wz;
-    
-    chassis.mode           = rx_msg.pack.mode; 
-    chassis.supercap_req   = rx_msg.pack.supercap_req;
-    chassis.climb_mode     = rx_msg.pack.climb_cmd;
-    chassis.led_cmd        = rx_msg.pack.led_cmd;
-    chassis.key_shift      = rx_msg.pack.key_shift; 
-    chassis.friction_state = rx_msg.pack.friction_state;
-	  chassis.is_base_locked = rx_msg.pack.is_base_locked;
-	  chassis.battle_mode    = rx_msg.pack.battle_mode;
-	
-    chassis.cnt = 0; 
-}
-
-
-
-
-typedef union
-{
-    uint8_t data[8]; 
-    
-    __packed struct
-    {
-        uint64_t yaw_angle_x100   : 16; //Yawn轴机械角度
-        int64_t  pitch_angle_x100 : 16; //Pitch俯仰机械角度
-
-			  uint64_t friction_speed        : 13; //摩擦轮目标转速
-			
-        uint64_t reserved        : 19; //剩19位
-    } pack;
-} Gimbal_UI_Msg_t;
-
-
-
-
-//更新云台发来的UI数据包
-void update_gimbal_ui_data(const uint8_t *data)
-{
-    Gimbal_UI_Msg_t rx_ui;
-    
-    memcpy(rx_ui.data, data, 8);
-    
-
-    UI_Data.yaw_deg  = (float)rx_ui.pack.yaw_angle_x100 * 0.01f;
-    UI_Data.pit_deg  = (float)rx_ui.pack.pitch_angle_x100 * 0.01f;
-    UI_Data.friction_speed = rx_ui.pack.friction_speed;
-}
-
 
 /* USER CODE END 0 */
 

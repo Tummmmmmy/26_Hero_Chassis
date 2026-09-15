@@ -34,6 +34,7 @@
 #include "RM_JudgeSystem.h"
 #include "bsp_ano_protocol.h"
 #include "device_task.h"
+#include "can_task.h"
 #include "tim.h"
 //#include "math.h"
 
@@ -160,7 +161,6 @@ const osSemaphoreAttr_t anoTxSem_attributes = {
 
 void All_Init_Run(void *argument);
 extern void Chassis_Control_task(void *argument);
-extern void Can_Decode_Task(void *argument);
 extern void Print_Task(void *argument);
 extern void SuperCap_Task(void const * argument);
 void Device_Task(void *argument);
@@ -218,7 +218,7 @@ void MX_FREERTOS_Init(void) {
   Chassis_TaskHandle = osThreadNew(Chassis_Control_task, NULL, &Chassis_Task_attributes);
 
   /* creation of CanDecodeTask */
-  CanDecodeTaskHandle = osThreadNew(Can_Decode_Task, NULL, &CanDecodeTask_attributes);
+  CanDecodeTaskHandle = osThreadNew((osThreadFunc_t)Can_Decode_Task, NULL, &CanDecodeTask_attributes);
 
   /* creation of AnoPrintTask */
   AnoPrintTaskHandle = osThreadNew(Print_Task, NULL, &AnoPrintTask_attributes);
