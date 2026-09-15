@@ -34,7 +34,6 @@ typedef struct
 	  uint8_t friction_speed;
 	  uint8_t is_base_locked;//是否锁定基地
 	  uint8_t battle_mode;   //键鼠模式(0: 失能, 1:跟随, 2: 底盘锁 3: 吊射)
-    uint32_t cnt;
 } Chassis_Cmd_t;
 
 //双板通信接收结构体
@@ -43,7 +42,6 @@ typedef struct
     float yaw_deg;
     float pit_deg;
 	  uint16_t friction_speed;
-    uint32_t cnt;
 } Chassis_UI_t;
 
 extern volatile Chassis_Cmd_t chassis;

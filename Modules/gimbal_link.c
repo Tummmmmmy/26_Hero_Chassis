@@ -12,7 +12,7 @@
 
 //接收的云台数据
 volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
-volatile Chassis_UI_t UI_Data = {0,0,0,0};
+volatile Chassis_UI_t UI_Data = {0,0,0};
 
 //板间链路在线状态
 static uint32_t s_last_rx_tick = 0;
@@ -64,8 +64,6 @@ void Gimbal_Link_Decode_Command(const uint8_t *data)
     chassis.friction_state = rx_msg.pack.friction_state;
 	  chassis.is_base_locked = rx_msg.pack.is_base_locked;
 	  chassis.battle_mode    = rx_msg.pack.battle_mode;
-	
-    chassis.cnt = 0; 
     //刷新链路在线状态(收到帧即判在线)
     s_last_rx_tick = osKernelGetTickCount();
     s_is_online = true;

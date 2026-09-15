@@ -28,29 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdint.h>
-#include <stdlib.h>
-#include <math.h>	
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
 
-#include "bsp_power_meter.h"
-#include "bsp_SuperCap.h"
-#include "power_control.h"
-#include "bsp_ano_protocol.h"
-#include "bsp_can.h"
-#include "cmsis_os2.h"
-#include "RM_JudgeSystem.h"
-#include "INS_task.h"
-#include "Ramp.h"
-
-#include "gimbal_link.h"
-#include "robot_control.h"
-#include "climb_control.h"
-#include "chassis_control.h"
-#include "can_transmit.h"
-#include "pid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,31 +43,12 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define ABS(x) ((x) > 0 ? (x) : -(x))
-
-#define PI 3.14159265358979f
-
-const float DEG_TO_RAD = PI / 180.0f;
-const float RAD_TO_DEG = 180.0f / PI;
-const float ENCODER_TO_RAD = 2.0f * PI / 8192.0f;//编码值与弧度的转换系数
-const float ENCODER_TO_DEG = 360.0f / 8192.0f;
-const float DEG_TO_ENCODER = 8192.0f / 360.0f;
-
-
-#define LK_CURRENT_TO_RAW  (2048.0f / 16.5f)  // Amps -> -2048~2048
-#define LK_RAW_TO_CURRENT  (16.5f / 2048.0f)
-#define LK_RAW_TO_DPS      1.0f               // 1 LSB = 1 degree/second
-#define LK_DPS_TO_RPM      (1.0f / 6.0f)      // dps -> rpm
-
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
-//更新云台Yaw电机
-void update_gimbal_yaw(const uint8_t* data);
 
 /* USER CODE END PV */
 
@@ -102,46 +61,6 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
-#define P_MIN -12.5		//位置最小值
-#define P_MAX 12.5		//位置最大值
-#define V_MIN -45			//速度最小值
-#define V_MAX 45			//速度最大值
-#define KP_MIN 0.0		//Kp最小值
-#define KP_MAX 500.0	//Kp最大值
-#define KD_MIN 0.0		//Kd最小值
-#define KD_MAX 5.0		//Kd最大值
-#define T_MIN -18			//转矩最大值
-#define T_MAX 18			//转矩最小值
-/**
- * @brief  采用浮点数据等比例转换成整数
- * @param  x_int     	要转换的无符号整数
- * @param  x_min      目标浮点数的最小值
- * @param  x_max    	目标浮点数的最大值
- * @param  bits      	无符号整数的位数
- */
-float uint_to_float(int x_int, float x_min, float x_max, int bits){
-/// converts unsigned int to float, given range and number of bits ///
- float span = x_max - x_min;
- float offset = x_min;
- return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
-}
-/**
- * @brief  将浮点数转换为无符号整数
- * @param  x     			要转换的浮点数
- * @param  x_min      浮点数的最小值
- * @param  x_max    	浮点数的最大值
- * @param  bits      	无符号整数的位数
- */
-
-int float_to_uint(float x, float x_min, float x_max, int bits){
- /// Converts a float to an unsigned int, given range and number of bits///
- float span = x_max - x_min;
- float offset = x_min;
- return (int) ((x-offset)*((float)((1<<bits)-1))/span);
-}
-
 
 /* USER CODE END 0 */
 

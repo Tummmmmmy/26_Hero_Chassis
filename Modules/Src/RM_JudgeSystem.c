@@ -939,7 +939,6 @@ void determine_ID(void)
 unsigned char CliendTxBuffer[send_max_len];
 void UI_PushUp_Graphs(uint8_t Counter, void *Graphs)
 {
-	    static uint8_t datalength;
 	UI_Graph1_t *Graph = (UI_Graph1_t *)Graphs; //    ֻ  һ      ͼ
 
 	/*     frame_header */

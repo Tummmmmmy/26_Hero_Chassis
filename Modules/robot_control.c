@@ -17,7 +17,6 @@
 #include "bsp_power_meter.h"
 #include "bsp_ano_protocol.h"
 #include "RM_JudgeSystem.h"
-#include <string.h>
 
 //系统LED状态(device_task 通过 Robot_Get_Led_State 读取)
 static volatile LED_State_e s_led_state = LED_BOOTING;
@@ -36,34 +35,12 @@ void Robot_Set_Led_State(LED_State_e state)
 }
 
 
-Motor_Controller gimbal_yaw_motor;
-
-
-//初始化电机
-void Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan)
-{
-    memset(&motor->feedback, 0, sizeof(Motor_Feedback));
-    motor->id = id;
-    motor->hfdcan = hfdcan;
-    motor->target_world_angle = 0.0f;
-    motor->mechanical_degree = 0.0f;
-    motor->target_total_angle = 0.0f;
-    motor->round_count = 0;
-    motor->last_feedback_angle = 0;
-    motor->current_total_angle = 0.0f;
-    motor->target_speed = 0.0f;
-    motor->target_current = 0;
-}
-
 
 //初始化电机参数
 void Robot_Param_Init(void)
 {
     //初始化底盘电机
     Chassis_Control_Init();
-		
-		//Yaw(LK)
-    Motor_Init(&gimbal_yaw_motor, 1 , &hfdcan1);
 }
 
 #define DATA_ACQUISITION_MODE 0 // 1: 开启数据采集, 0: 关闭
@@ -72,8 +49,6 @@ void Robot_Param_Init(void)
 void Robot_Control_Loop(void)
 {
 	  static uint8_t last_mode = 0; 
-	
-    chassis.cnt++;
 	
 	
 		//发送双板通信
