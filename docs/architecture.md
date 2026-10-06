@@ -26,7 +26,7 @@ Robot_Control_Loop()                     ← 整机调度（Modules/robot_contro
     ├─ 失能检查 / 使能切换 / LED 状态
     ├─ Climb_Control_Update()            ← Modules/climb_control.c（气缸相位）
     ├─ Chassis_Control_Update()          ← Modules/chassis_control.c（麦轮解算 + 速度环）
-    ├─ power_control_run()               ← Modules/power_control.c（功率分配）
+    ├─ Power_Control_Update()            ← Modules/power_control.c（功率分配）
     └─ 统一 CAN 输出                     ← Modules/can_transmit.c
 ```
 
@@ -57,7 +57,8 @@ FDCAN 中断 → BSP/bsp_can.c → osMessageQueuePut(canRxQueueHandle)
 Task/
 ├── control_task.c    Chassis_Control_task（1ms 控制任务）
 ├── can_task.c        Can_Decode_Task
-├── monitor_task.c    离线巡检（底盘电机 / 双板链路）
+├── supercap_task.c   超级电容（50ms：离线检测 / 充放电决策 / 0x601）
+├── monitor_task.c    离线巡检（底盘电机 / 双板链路 / 功率计）
 ├── device_task.c     WS2812 状态灯
 ├── UI_task.c         Client_UI_Task（裁判系统 UI 绘制）
 ├── INS_task.c        IMU 数据生产
@@ -78,8 +79,8 @@ Task/
                       ├─ 失能检查（云台链路 / 裁判系统底盘输出）
                       ├─ Climb_Control_Update()      → 气缸 IO
                       ├─ Chassis_Control_Update()    → Chassis_Output_t（速度环电流）
-                      ├─ power_control_run()         → 最终电流（功率 + 超电约束）
-                      └─ 0x200 电流 / 0x601 超电 / 0x304 回传 → BSP/bsp_can → FDCAN
+                      ├─ Power_Control_Update()      → 最终电流（功率 + 超电约束）
+                      └─ 0x200 电流 / 0x304 回传 → BSP/bsp_can → FDCAN；0x601 超电由 supercap_task(50ms) 发送
 ```
 
 ## 4. 状态归属
@@ -90,9 +91,10 @@ Task/
 | `CAN_Rx_Message_t` / `canRxQueueHandle` | `BSP/bsp_can.h`（CAN 接收帧结构体与接收队列句柄） |
 | 底盘 4 电机、麦轮解算、速度环 PID、逻辑→物理 ID 映射 | `Modules/chassis_control.c`（电机数组为 `static`，对外只给 `Chassis_Output_t`） |
 | 气缸相位 | `Modules/climb_control.c`（`static`，对外只给 `Climb_Get_Phase()`） |
-| 功率控制器（缓冲 PID、功率模型参数、分配结果） | `Modules/power_control.c` |
-| 超级电容状态 | `BSP/bsp_SuperCap.c`（`g_supercap`） |
-| 功率计数据 | `BSP/bsp_power_meter.c`（`power_meter`） |
+| 功率控制器（缓冲 PID、功率模型参数、分配结果） | `Modules/power_control.c`（内部 static，对外仅 `Power_Control_Init/Update/Get_Currents`） |
+| 超级电容收发与状态 | `BSP/bsp_SuperCap.c`（内部 static + getter/setter，全局 `g_supercap` 已取消） |
+| 超电充放电决策 | `Modules/supercap_control.c`（由 `Task/supercap_task.c` 每 50ms 调用） |
+| 功率计数据 | `BSP/bsp_power_meter.c`（内部 static + getter；离线检测由 `Task/monitor_task.c` 巡检） |
 | 双板指令 / UI 快照、链路在线状态 | `Modules/gimbal_link.c` |
 | 拨盘转发（速度/模式/反馈） | `Modules/can_transmit.c`（`Dial_Relay_*`） |
 | 系统 LED 状态、失能/使能切换 | `Modules/robot_control.c` |
@@ -122,6 +124,7 @@ Task/
 9. `Modules/robot_control` + `Task/control_task` ✅（`1e9ae3f`）
 10. 死代码清理 ✅（`71e06f9`）
 11. 目录/命名整理 + README + 架构文档（本步）
+12. 功率计 / 超电 / 功率控制封装：状态私有化 + getter/setter，功率计离线检测接入 Monitor_Task ✅
 
 ## 7. 编码约定
 
@@ -136,11 +139,12 @@ Robot_Control_Loop (Modules/robot_control.c, 1ms 调度)
     ├─ 失能检查 / 使能切换    Modules/robot_control.c
     ├─ Climb_Control_Update   Modules/climb_control.c     气缸
     ├─ Chassis_Control_Update Modules/chassis_control.c   麦轮 + 速度环
-    ├─ power_control_run      Modules/power_control.c     功率分配
+    ├─ Power_Control_Update   Modules/power_control.c     功率分配
     └─ 统一 CAN 输出          Modules/can_transmit.c → BSP/bsp_can.c
 
 接收: FDCAN 中断 → BSP/bsp_can.c → Task/can_task.c → Modules/can_receive.c → 各模块
-巡检: Task/monitor_task.c → chassis_control / gimbal_link 在线状态
+超电: Task/supercap_task.c（50ms）→ Modules/supercap_control.c → 0x601
+巡检: Task/monitor_task.c → chassis_control / gimbal_link / power_meter 在线状态
 ```
 
 `Core/Src/main.c` 现在只剩 HAL 初始化与系统入口（约 243 行，无任何控制逻辑）。

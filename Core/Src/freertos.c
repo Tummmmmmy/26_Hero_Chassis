@@ -30,7 +30,7 @@
 #include "bsp_power_meter.h"
 #include "bsp_can.h"
 #include "bsp_SuperCap.h"
-#include "power_control.h"
+#include "supercap_task.h"
 #include "RM_JudgeSystem.h"
 #include "bsp_ano_protocol.h"
 #include "device_task.h"

@@ -1260,11 +1260,11 @@ void UI_Dynamic2()
 				if(chassis.battle_mode != 3 && chassis.battle_mode != 2)
 				{
 						uint8_t current_color;
-						if(g_supercap.rx_data.pack.cap_level > 50)
+						if(supercap_get_cap_level() > 50)
 						{
 								current_color = UI_Color_Green;   //绿色
 						}
-						else if (g_supercap.rx_data.pack.cap_level >= 30)
+						else if (supercap_get_cap_level() >= 30)
 						{
 								current_color = UI_Color_Yellow;  //黄色
 						}
@@ -1276,7 +1276,7 @@ void UI_Dynamic2()
 						//进度条
 						int start_x = 650;
 						int max_width = 600;
-						int current_end_x = start_x + (g_supercap.rx_data.pack.cap_level * max_width / 100);
+						int current_end_x = start_x + (supercap_get_cap_level() * max_width / 100);
 						
 						if(current_end_x <= start_x) current_end_x = start_x + 1;
 
@@ -1290,7 +1290,7 @@ void UI_Dynamic2()
 						UI_CapTextString.cilentData.grapic_data_struct.operate_tpye = UI_Graph_Change;
 						UI_CapTextString.cilentData.grapic_data_struct.color = current_color;
 						
-						snprintf(UI_CapTextString.cilentData.data, 30, "CAP:%d%%   ", g_supercap.rx_data.pack.cap_level);
+						snprintf(UI_CapTextString.cilentData.data, 30, "CAP:%d%%   ", supercap_get_cap_level());
 						UI_CapTextString.cilentData.grapic_data_struct.end_angle = strlen(UI_CapTextString.cilentData.data);
 						
 						UI_PushUp_String(&UI_CapTextString);

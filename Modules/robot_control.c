@@ -78,7 +78,7 @@ void Robot_Control_Loop(void)
     if(last_mode == 0 && chassis.mode == 1)
     {
         Chassis_Enable();
-				power_control_init();
+				Power_Control_Init();
     }
     last_mode = 1;
 		
@@ -111,7 +111,7 @@ void Robot_Control_Loop(void)
 		
 		//最大输出电流限制
 		float current_max_output = 12000.0f;
-    if(!g_supercap.offline_flag && g_supercap.tx_data.pack.is_cap_output == SUPERCAP_OUTPUT_ENABLE)
+    if(!supercap_is_offline() && supercap_is_output_enabled())
     {
         current_max_output = 15000.0f; 
     }
@@ -129,7 +129,7 @@ void Robot_Control_Loop(void)
 						printf_counter = 0;
 						
 						const Motor_Controller* motors = Chassis_Get_Motors();
-						float p_actual = power_meter.power;
+						float p_actual = power_meter_get_power();
 						float sum_wI = 0.0f, sum_I2 = 0.0f, sum_w2 = 0.0f;
 						for (int i = 0; i < 4; i++)
 						{
@@ -150,11 +150,11 @@ void Robot_Control_Loop(void)
 		#endif
 
     //功率控制
-    power_control_run(Chassis_Get_Motors(), chassis_out->target_currents, chassis_out->speed_errors_rpm);
+    Power_Control_Update(Chassis_Get_Motors(), chassis_out->target_currents, chassis_out->speed_errors_rpm);
 
     //获取最终电流
     int16_t final_currents[CHASSIS_MOTOR_NUM] = {0};
-    get_final_chassis_current(final_currents);
+    Power_Control_Get_Currents(final_currents);
 
     //发送电流
     Chassis_Set_Target_Currents(final_currents);

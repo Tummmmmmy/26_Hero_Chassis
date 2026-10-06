@@ -10,6 +10,7 @@
 #include "task.h"
 #include "chassis_control.h"
 #include "gimbal_link.h"
+#include "bsp_power_meter.h"
 
 
 
@@ -32,6 +33,9 @@ void Monitor_Task(void const * argument)
 
 			  //双板链路(云台 -> 底盘)
         Gimbal_Link_Update_Online_Status(now);
+
+        //功率计离线检测
+        power_meter_check_offline(2000);
 
         vTaskDelayUntil(&xLastWakeTime, TimeIncrement);
     }

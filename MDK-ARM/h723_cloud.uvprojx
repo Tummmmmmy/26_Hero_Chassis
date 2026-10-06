@@ -1183,6 +1183,11 @@
               <FileType>1</FileType>
               <FilePath>..\Modules\power_control.c</FilePath>
             </File>
+            <File>
+              <FileName>supercap_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Modules\supercap_control.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1222,6 +1227,11 @@
               <FileName>monitor_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Task\monitor_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>supercap_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\supercap_task.c</FilePath>
             </File>
             <File>
               <FileName>print_task.c</FileName>
