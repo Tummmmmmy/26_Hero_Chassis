@@ -1,9 +1,7 @@
 /**
  * @file can_receive.c
- * @brief CAN 接收路由
+ * @brief CAN 接收模块
  *
- * 只做分拣: 按总线/ID 把收到的 CAN 帧分发到对应模块的解码/转发接口,
- * 字节解析由各模块内部完成。
  */
 
 #include "can_receive.h"
@@ -20,7 +18,6 @@
 #define RX_DIAL_MODE_ID 0x301
 
 
-//按总线与ID分发CAN接收帧
 void CAN_Rx_Route(CAN_Rx_Message_t* msg)
 {
     if(msg->hfdcan->Instance == FDCAN1)
@@ -30,20 +27,33 @@ void CAN_Rx_Route(CAN_Rx_Message_t* msg)
         {
             Gimbal_Link_Decode_Command(msg->data);
         }
-
         //转发云台发来的拨盘速度控制指令
         else if(msg->can_id == RX_DIAL_CMD_ID)
         {
             Dial_Relay_Speed_Cmd(&hfdcan3, msg->data);
         }
-        /* 【历史备用路径】拨盘力矩转发: 云台早期也下发过力矩指令(同为 0x303),
-           当前拨盘走速度控制, 若要改回力矩转发, 把上面的速度转发分支换成下面这段:
-        //转发云台发来的拨盘力矩控制指令
-        else if(msg->can_id == RX_DIAL_CMD_ID)
-        {
-            BSP_CAN_Send(&hfdcan3, DM_DIAL_SEND_ID, msg->data, FDCAN_DLC_BYTES_8);
-        }
-           (DM_DIAL_SEND_ID 见 can_transmit.h; 启用时本文件需 include "bsp_can.h") */
+						/*	
+				//转发云台发来的拨盘力矩控制指令
+				else if(rx_msg.can_id == RX_DIAL_CMD_ID)
+				{
+					
+						FDCAN_TxHeaderTypeDef tx_header;
+						tx_header.Identifier = 0x07;
+						tx_header.IdType = FDCAN_STANDARD_ID;
+						tx_header.TxFrameType = FDCAN_DATA_FRAME;
+						tx_header.DataLength = FDCAN_DLC_BYTES_8;
+						tx_header.FDFormat = FDCAN_CLASSIC_CAN;
+						tx_header.BitRateSwitch = FDCAN_BRS_OFF;
+						tx_header.MessageMarker = 0;
+						tx_header.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+						tx_header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+
+						if(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3) > 0)
+						{
+								HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &tx_header, rx_msg.data);
+						}
+				}
+				*/
         //转发云台发来的拨盘模式指令
         else if (msg->can_id == RX_DIAL_MODE_ID)
         {
@@ -56,17 +66,17 @@ void CAN_Rx_Route(CAN_Rx_Message_t* msg)
     }
     else if(msg->hfdcan->Instance == FDCAN2)
     {
-        //底盘电机反馈
+        //底盘
         if(msg->can_id >= 0x201 && msg->can_id <= 0x204)
         {
             Chassis_Update_Feedback(msg->data, msg->can_id);
         }
-        //功率计反馈
+        //功率计
         else if (msg->can_id == 0x301)
         {
             power_meter_decode(msg->data);
         }
-        //超电反馈
+        //超电
         else if (msg->can_id == SUPERCAP_RX_ID)
         {
             supercap_rx_decode(msg->data, msg->dlc);

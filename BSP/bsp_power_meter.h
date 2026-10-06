@@ -1,3 +1,9 @@
+/**
+ * @file bsp_power_meter.h
+ * @brief 功率计驱动接口
+ *
+ */
+
 #ifndef BSP_POWER_METER_H
 #define BSP_POWER_METER_H
 

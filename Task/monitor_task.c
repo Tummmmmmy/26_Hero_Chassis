@@ -1,3 +1,9 @@
+/**
+ * @file monitor_task.c
+ * @brief 电机在线检测任务
+ *
+ */
+
 #include "monitor_task.h"
 #include "cmsis_os.h"
 #include "FreeRTOS.h"

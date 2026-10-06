@@ -2,8 +2,6 @@
  * @file robot_control.c
  * @brief 底盘板整机调度实现
  *
- * 底盘板的总控制流程(1ms): 失能检查 -> 使能切换 -> 上坎 -> 底盘运动
- * -> 功率控制 -> 统一 CAN 输出; 上电初始化由 Robot_Param_Init 统一完成。
  */
 
 #include "robot_control.h"
@@ -18,34 +16,36 @@
 #include "bsp_ano_protocol.h"
 #include "RM_JudgeSystem.h"
 
-//系统LED状态(device_task 通过 Robot_Get_Led_State 读取)
-static volatile LED_State_e s_led_state = LED_BOOTING;
+//LED状态
+static volatile LED_State_e led_state = LED_BOOTING;
 
-//获取系统LED状态
+
+//获取LED状态
 LED_State_e Robot_Get_Led_State(void)
 {
-    return s_led_state;
+    return led_state;
 }
 
 
-//设置系统LED状态
+//设置LED状态
 void Robot_Set_Led_State(LED_State_e state)
 {
-    s_led_state = state;
+    led_state = state;
 }
 
 
 
-//初始化电机参数
+//初始化模块
 void Robot_Param_Init(void)
 {
-    //初始化底盘电机
     Chassis_Control_Init();
 }
 
+
+
 #define DATA_ACQUISITION_MODE 0 // 1: 开启数据采集, 0: 关闭
 
-//1ms 整机控制循环(由 Chassis_Control_task 调用)
+//底盘控制循环
 void Robot_Control_Loop(void)
 {
 	  static uint8_t last_mode = 0; 
@@ -58,18 +58,17 @@ void Robot_Control_Loop(void)
     {
 				Send_Gimbal_Data(&hfdcan1); 
     }
-
 		
 		
 		//失能
     if(chassis.mode == 0 || !Gimbal_Link_Is_Online() || (ext_game_robot_state.InfoUpdataFlag != 0 && ext_game_robot_state.data.mains_power_chassis_output == 0))
     {
-        Chassis_On_Robot_Off();
+        Chassis_Disable();
         DJI_Motor_Send_Command(&hfdcan2, 0x200, 0, 0, 0, 0);
 				
 				Climb_Control_Retract_All();//前后全收
 				
-				Robot_Set_Led_State(LED_DISABLED); // 失能 -> 红色
+				Robot_Set_Led_State(LED_DISABLED);
         last_mode = 0;
 				
         return;
@@ -78,7 +77,7 @@ void Robot_Control_Loop(void)
 		//重新使能
     if(last_mode == 0 && chassis.mode == 1)
     {
-        Chassis_On_Robot_Start();
+        Chassis_Enable();
 				power_control_init();
     }
     last_mode = 1;
@@ -110,7 +109,7 @@ void Robot_Control_Loop(void)
             break;
     }
 		
-		//最大输出电流
+		//最大输出电流限制
 		float current_max_output = 12000.0f;
     if(!g_supercap.offline_flag && g_supercap.tx_data.pack.is_cap_output == SUPERCAP_OUTPUT_ENABLE)
     {
@@ -143,7 +142,7 @@ void Robot_Control_Loop(void)
 						VOFA_Print_Wave(4, p_actual, sum_wI, sum_I2, sum_w2);
 				}
 				
-				//数据采集模式不经功率控制, 直接发送速度环原始电流
+				//数据采集模式不经功率控制, 直接发送原始电流
 				int16_t current_to_send[CHASSIS_MOTOR_NUM] = {0};
 				Chassis_Map_Currents_To_Physical(chassis_out->target_currents, current_to_send);
 				DJI_Motor_Send_Command(&hfdcan2, 0x200, current_to_send[0], current_to_send[1], current_to_send[2], current_to_send[3]);

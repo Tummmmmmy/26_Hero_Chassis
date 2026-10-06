@@ -1,3 +1,9 @@
+/**
+ * @file monitor_task.h
+ * @brief 电机在线检测任务接口
+ */
+
+
 #ifndef MONITOR_TASK_H
 #define MONITOR_TASK_H
 

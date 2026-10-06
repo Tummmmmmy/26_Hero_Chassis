@@ -1,3 +1,8 @@
+/**
+ * @file bsp_SuperCap.c
+ * @brief 超级电容板级驱动
+ */
+
 #include "bsp_SuperCap.h"
 #include "bsp_can.h"
 #include "cmsis_os2.h"
@@ -7,9 +12,7 @@
 #include "gimbal_link.h"
 
 
-
 supercap_controller_t g_supercap;
-
 
 
 //CAN指令发送
@@ -84,6 +87,7 @@ void SuperCap_Task(void const * argument)
                 g_supercap.tx_data.pack.is_cap_output = SUPERCAP_OUTPUT_DISABLE;
             }
 
+						
             //充电决策
             float charge_power_target = 0.0f;
             float referee_limit = ext_game_robot_state.data.chassis_power_limit;
@@ -97,7 +101,7 @@ void SuperCap_Task(void const * argument)
             {
 								float current_buffer = ext_power_heat_data.data.chassis_power_buffer;
 
-                const float CHARGE_KP = 30.0f;//每高出1J，增加24W充电功率
+                const float CHARGE_KP = 30.0f;//每高出1J，增加30W充电功率
                 float raw_charge_target = 0.0f;
 
                 if(current_buffer > 55.99f)
@@ -109,6 +113,7 @@ void SuperCap_Task(void const * argument)
                     raw_charge_target = 0.1f; 
                 }
                 
+								
 								//充电功率限幅
                 float safe_max_charge = referee_limit;
 								
@@ -125,10 +130,12 @@ void SuperCap_Task(void const * argument)
                 filtered_charge_target = (filtered_charge_target * 0.9f) + (raw_charge_target * 0.1f);
                 
                 charge_power_target = filtered_charge_target;
-								
-								g_supercap.tx_data.pack.charge_power = charge_power_target;
-                g_supercap.tx_data.pack.charge_enable = SUPERCAP_CHARGE_ENABLE;
 							}
+						
+							if(charge_power_target < 0.0f)   charge_power_target = 0.0f;
+							if(charge_power_target > 120.0f) charge_power_target = 120.0f;
+							g_supercap.tx_data.pack.charge_power = charge_power_target;
+              g_supercap.tx_data.pack.charge_enable = SUPERCAP_CHARGE_ENABLE;
         }
         //发送指令
         supercap_send_cmd(&hfdcan2);

@@ -1,3 +1,9 @@
+/**
+ * @file INS_task.c
+ * @brief IMU вкл╛╫БкЦхннЯ
+ *
+ */
+ 
 #include "main.h"
 #include "cmsis_os.h"
 #include "BMI088driver.h"

@@ -1,3 +1,9 @@
+/**
+ * @file bsp_SuperCap.h
+ * @brief 超级电容驱动接口
+ *
+ */
+
 #ifndef BSP_SUPERCAP_H
 #define BSP_SUPERCAP_H
 

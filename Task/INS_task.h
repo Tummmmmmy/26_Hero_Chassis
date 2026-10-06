@@ -1,3 +1,8 @@
+/**
+ * @file INS_task.h
+ * @brief IMU 姿态解算任务接口与 IMU_Data_t 定义
+ */
+ 
 #ifndef INS_TASK__H
 #define INS_TASK__H
 

@@ -2,23 +2,20 @@
  * @file chassis_control.c
  * @brief 底盘麦克纳姆轮运动控制实现
  *
- * 底盘 4 个电机的状态全部收拢在本模块:
- * - 麦轮运动学解算与速度环 PID
- * - 电流按物理 ID 的分配映射
- * - 0x201~0x204 反馈解码与多圈角度累计
- * 模块不直接发送 CAN, 最终电流由整机调度层统一发送。
  */
 #include "chassis_control.h"
 #include <string.h>
 
 #define PI 3.14159265358979f
+static const float RPS_TO_RPM = 60.0f / (2.0f * PI);
 
 //底盘参数
 static const float L = 0.43f;  //前后轮距(米)
 static const float W = 0.38f; //左右轮距(米)
 static const float R = 0.074f; //轮子半径(米)
 static const float R_recprocal = 1 / R;//R的倒数
-static const float RPS_TO_RPM = 60.0f / (2.0f * PI);
+
+
 
 //PID参数
 //底盘PID
@@ -28,15 +25,17 @@ static float chassis_kd = 0.0f;
 static float chassis_Integral_Limit = 3000;//2000
 static float chassis_MaxOutput = 12000;//最大输出电流
 
-//底盘电机(逻辑顺序)与对应的物理ID
+
+
+//底盘电机与对应的物理ID
 static Motor_Controller chassis_motors[CHASSIS_MOTOR_NUM];
 static const uint8_t chassis_motor_physical_id[CHASSIS_MOTOR_NUM]= {1, 2, 4, 3};//底盘电机对应的物理ID
 
-//电机离线判定超时(ms)
+
 #define CHASSIS_MOTOR_OFFLINE_TIMEOUT_MS 200
 
-//输出快照
-static Chassis_Output_t s_out;
+//底盘输出
+static Chassis_Output_t output;
 
 //初始化电机
 static void Chassis_Motor_Init(Motor_Controller* motor, uint8_t id, FDCAN_HandleTypeDef* hfdcan);
@@ -113,16 +112,14 @@ static void Chassis_Movement_Calculation(float Vx, float Vy, float Wz)
 }
 
 
-//初始化底盘电机与速度环 PID
+//初始化底盘
 void Chassis_Control_Init(void)
 {
-    //初始化底盘电机
     Chassis_Motor_Init(&chassis_motors[0], chassis_motor_physical_id[0], &hfdcan2);
     Chassis_Motor_Init(&chassis_motors[1], chassis_motor_physical_id[1], &hfdcan2);
     Chassis_Motor_Init(&chassis_motors[2], chassis_motor_physical_id[2], &hfdcan2);
     Chassis_Motor_Init(&chassis_motors[3], chassis_motor_physical_id[3], &hfdcan2);
 
-    //初始化底盘电机PID
     for(int i=0; i<CHASSIS_MOTOR_NUM; i++)
     {
         PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, chassis_MaxOutput);
@@ -130,15 +127,17 @@ void Chassis_Control_Init(void)
 }
 
 
-//整机启动: 恢复速度环 PID 输出限幅
-void Chassis_On_Robot_Start(void)
+
+//底盘使能
+void Chassis_Enable(void)
 {
     for(int i=0; i<CHASSIS_MOTOR_NUM; i++) PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, chassis_MaxOutput);
 }
 
 
-//整机失能: 目标与电流清零, PID 复位(输出限幅置 0)
-void Chassis_On_Robot_Off(void)
+
+//底盘失能
+void Chassis_Disable(void)
 {
     for(int i=0; i<CHASSIS_MOTOR_NUM; i++)
     {
@@ -147,11 +146,11 @@ void Chassis_On_Robot_Off(void)
         PID_Init(&chassis_motors[i].pid_speed, chassis_kp, chassis_ki, chassis_kd, chassis_Integral_Limit, 0);
     }
 
-    memset(&s_out, 0, sizeof(Chassis_Output_t));
+    memset(&output, 0, sizeof(Chassis_Output_t));
 }
 
 
-//底盘控制: 麦轮解算 + 速度环计算, 结果写入输出快照
+//更新底盘控制
 void Chassis_Control_Update(float vx, float vy, float wz, float max_output)
 {
     Chassis_Movement_Calculation(vx, vy, wz);
@@ -163,14 +162,16 @@ void Chassis_Control_Update(float vx, float vy, float wz, float max_output)
 
         chassis_motors[i].pid_speed.MaxOutput = max_output;
 
-        s_out.target_currents[i] = (int16_t)PID_Calculate(&chassis_motors[i].pid_speed, target_rpm, measured_rpm);
+        output.target_currents[i] = (int16_t)PID_Calculate(&chassis_motors[i].pid_speed, target_rpm, measured_rpm);
 
-        s_out.speed_errors_rpm[i] = chassis_motors[i].pid_speed.error;
+        output.speed_errors_rpm[i] = chassis_motors[i].pid_speed.error;
     }
 }
 
 
-//记录功率控制后的最终电流(逻辑电机顺序, 供调试观测)
+
+
+//记录功率控制后的最终电流
 void Chassis_Set_Target_Currents(const int16_t* final_currents)
 {
     for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
@@ -180,7 +181,8 @@ void Chassis_Set_Target_Currents(const int16_t* final_currents)
 }
 
 
-//把逻辑电机电流映射为 0x200 报文的物理 ID 顺序
+
+//映射电流
 void Chassis_Map_Currents_To_Physical(const int16_t* logical_currents, int16_t* tx_currents)
 {
     for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
@@ -201,7 +203,8 @@ void Chassis_Map_Currents_To_Physical(const int16_t* logical_currents, int16_t* 
 }
 
 
-//0x201~0x204 底盘电机反馈解码
+
+//解码底盘电机的CAN反馈帧
 void Chassis_Update_Feedback(const uint8_t* data, uint32_t can_id)
 {
     uint8_t physical_id = can_id - 0x200;//算出物理id
@@ -246,14 +249,14 @@ void Chassis_Update_Online_Status(uint32_t current_tick)
 }
 
 
-//获取输出快照(零拷贝只读)
+//底盘输出
 const Chassis_Output_t* Chassis_Get_Output(void)
 {
-    return &s_out;
+    return &output;
 }
 
 
-//获取底盘电机只读指针(供功率控制使用)
+//获取底盘电机信息
 const Motor_Controller* Chassis_Get_Motors(void)
 {
     return chassis_motors;

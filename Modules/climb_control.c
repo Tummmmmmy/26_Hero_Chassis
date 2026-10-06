@@ -2,14 +2,12 @@
  * @file climb_control.c
  * @brief 气动上坎状态机实现
  *
- * 前/后气缸的伸缩状态机与 IO 控制。模块对外只给出当前上坎相位,
- * LED 显示由整机调度层决定。
  */
 #include "climb_control.h"
 #include "main.h"
 
-//当前上坎相位
-static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;
+
+static Climb_Phase_e climb_state = CLIMB_ALL_RETRACT;//当前上坎状态
 
 
 static inline void Front_Cylinder_Extend(void)
@@ -33,7 +31,7 @@ static inline void Back_Cylinder_Retract(void)
 }
 
 
-//气动上坎
+//气动上坎控制
 void Climb_Control_Update(uint8_t climb_mode)
 {
     static bool has_extend = 0;
@@ -99,7 +97,7 @@ void Climb_Control_Update(uint8_t climb_mode)
 }
 
 
-//前后气缸全收(整机失能时调用)
+//前后气缸全收
 void Climb_Control_Retract_All(void)
 {
     Front_Cylinder_Retract();//前收
@@ -107,7 +105,7 @@ void Climb_Control_Retract_All(void)
 }
 
 
-//获取当前上坎相位
+//获取当前上坎状态
 Climb_Phase_e Climb_Get_Phase(void)
 {
     return climb_state;

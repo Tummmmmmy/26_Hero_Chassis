@@ -21,7 +21,7 @@
 - `Core/`：HAL 外设初始化、`main.c`、FreeRTOS 配置
 - `Algorithm/`：PID（全项目统一一套）、Ramp、Mahony、EKF、Kalman、LADRC、滤波等算法
 - `BSP/`：FDCAN、功率计、超级电容、裁判系统串口（drv_uart）、ANO 协议、蜂鸣器等板级驱动
-- `Devices/`：BMI088 IMU、WS2812 等器件驱动
+- `Devices/`：BMI088 IMU、WS2812 等器件驱动、电机通用结构体(motor.h)
 - `Task/`：控制(control_task)、CAN接收(can_task)、打印(print_task)、IMU、device、UI、monitor 等 FreeRTOS 任务
 - `Modules/`：整机调度(robot_control)、底盘(chassis_control)、上坎(climb_control)、功率(power_control)、CAN收发(can_transmit/can_receive)、板间链路(gimbal_link)、裁判系统(RM_JudgeSystem)
 - `Drivers/ Middlewares/`：ST HAL、CMSIS、FreeRTOS

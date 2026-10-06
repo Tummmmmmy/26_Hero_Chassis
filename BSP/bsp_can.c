@@ -1,14 +1,13 @@
 /**
  * @file bsp_can.c
- * @brief FDCAN 硬件抽象层：初始化与接收中断
+ * @brief FDCAN 硬件抽象层
  *
- * 只负责 FDCAN 外设配置和底层收帧，不解析具体电机/设备协议。
- * 协议解析由 Can_Decode_Task / can_receive 负责。
  */
+
 #include "bsp_can.h"
 #include <string.h>
 
-// FDCAN 通信初始化：配置滤波器、启动三个 FDCAN、开启 RX FIFO0 接收中断
+//FDCAN通信初始化
 void BSP_FDCAN_Config(void)
 {
     FDCAN_FilterTypeDef sFilterConfig;
@@ -31,7 +30,7 @@ void BSP_FDCAN_Config(void)
     HAL_FDCAN_ConfigGlobalFilter(&hfdcan2, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
     HAL_FDCAN_Start(&hfdcan2);
     HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-    
+
     //FDCAN3
     HAL_FDCAN_ConfigFilter(&hfdcan3, &sFilterConfig);
     HAL_FDCAN_ConfigGlobalFilter(&hfdcan3, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
@@ -40,7 +39,7 @@ void BSP_FDCAN_Config(void)
 }
 
 
-//CAN接收中断回调函数
+//CAN接收中断回调
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
     FDCAN_RxHeaderTypeDef rx_header;
@@ -57,16 +56,16 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
                 CAN_Rx_Message_t can_msg;
                 can_msg.hfdcan = hfdcan;
                 can_msg.can_id = rx_header.Identifier;
-                can_msg.dlc = (uint8_t)rx_header.DataLength;//经典CAN下DLC即为数据字节数
                 memcpy(can_msg.data, rx_data, 8);
-                
+
                 osMessageQueuePut(canRxQueueHandle, &can_msg, 0, 0);
             }
         }
     }
 }
 
-// 底层发送一帧：标准帧 + Classic CAN，TX FIFO 有空位时写入
+
+//底层发送一帧
 void BSP_CAN_Send(FDCAN_HandleTypeDef* hfdcan, uint32_t std_id, uint8_t* data, uint32_t dlc)
 {
     FDCAN_TxHeaderTypeDef TxHeader;

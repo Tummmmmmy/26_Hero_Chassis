@@ -2,23 +2,19 @@
  * @file can_transmit.c
  * @brief CAN 发送协议层
  *
- * 负责把控制量打包成具体电机/设备协议并发送。
- * 底层 FDCAN 硬件收发由 BSP/bsp_can 提供。
  */
 #include "can_transmit.h"
 #include "bsp_can.h"
 #include "RM_JudgeSystem.h"
 
-/**
-  * @brief  大疆电机控制指令发送
-  * @param  hfdcan: FDCAN句柄指针
-  * @param  std_id: 目标控制CAN ID
-  * @param  current: 对应4个电机的目标电流
-  */
-//大疆电机控制指令
+
+
+
+//大疆电机控制指令发送
 void DJI_Motor_Send_Command(FDCAN_HandleTypeDef* hfdcan, uint32_t std_id, int16_t current1, int16_t current2, int16_t current3, int16_t current4)
 {
     uint8_t tx_data[8];
+
 
     tx_data[0] = (uint8_t)(current1 >> 8);
     tx_data[1] = (uint8_t)(current1 & 0xFF);
@@ -29,12 +25,11 @@ void DJI_Motor_Send_Command(FDCAN_HandleTypeDef* hfdcan, uint32_t std_id, int16_
     tx_data[6] = (uint8_t)(current4 >> 8);
     tx_data[7] = (uint8_t)(current4 & 0xFF);
 
-    //直接写入硬件 FIFO (检查是否有空位)
     BSP_CAN_Send(hfdcan, std_id, tx_data, FDCAN_DLC_BYTES_8);
 }
 
 
-//底盘发给云台的数据
+//底盘发给云台的数据包
 typedef union
 {
     uint8_t data[8];
@@ -67,26 +62,26 @@ void Send_Gimbal_Data(FDCAN_HandleTypeDef* hfdcan)
     tx_msg.pack.color     = is_red_or_blue();
     tx_msg.pack.ref_online = Judge_IsOnline();
 
-    //直接写入硬件 FIFO (检查是否有空位)
     BSP_CAN_Send(hfdcan, TX_GIMBAL_DATA_ID, tx_msg.data, FDCAN_DLC_BYTES_8);
 }
 
 
-// 转发云台发来的拨盘速度指令给达妙拨盘 (0x303 -> 0x207)
+
+//转发云台发来的拨盘速度指令给达妙拨盘
 void Dial_Relay_Speed_Cmd(FDCAN_HandleTypeDef* hfdcan, uint8_t* data)
 {
     BSP_CAN_Send(hfdcan, DIAL_MOTOR_SPEED_COMMAND_ID, data, FDCAN_DLC_BYTES_4);
 }
 
 
-// 转发云台发来的拨盘模式指令给达妙拨盘 (0x301 -> 0x07)
+//转发云台发来的拨盘模式指令给达妙拨盘
 void Dial_Relay_Mode_Cmd(FDCAN_HandleTypeDef* hfdcan, uint8_t* data)
 {
     BSP_CAN_Send(hfdcan, DM_DIAL_SEND_ID, data, FDCAN_DLC_BYTES_8);
 }
 
 
-// 转发达妙拨盘反馈给云台板 (0x17 -> 0x302)
+//转发达妙拨盘反馈给云台板
 void Dial_Relay_Feedback(FDCAN_HandleTypeDef* hfdcan, uint8_t* data)
 {
     BSP_CAN_Send(hfdcan, TX_DIAL_FDB_ID, data, FDCAN_DLC_BYTES_8);

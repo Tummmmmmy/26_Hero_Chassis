@@ -1049,6 +1049,11 @@
               <FilePath>..\BSP\bsp_can.c</FilePath>
             </File>
             <File>
+              <FileName>bsp_buzzer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\BSP\bsp_buzzer.c</FilePath>
+            </File>
+            <File>
               <FileName>bsp_power_meter.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\BSP\bsp_power_meter.c</FilePath>
@@ -1064,11 +1069,6 @@
               <FilePath>..\BSP\bsp_ano_protocol.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_buzzer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\BSP\bsp_buzzer.c</FilePath>
-            </File>
-            <File>
               <FileName>drv_uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\BSP\drv_uart.c</FilePath>
@@ -1078,6 +1078,11 @@
         <Group>
           <GroupName>Algorithm</GroupName>
           <Files>
+            <File>
+              <FileName>Ramp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Algorithm\Ramp.c</FilePath>
+            </File>
             <File>
               <FileName>iir_filter.c</FileName>
               <FileType>1</FileType>
@@ -1092,11 +1097,6 @@
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Algorithm\pid.c</FilePath>
-            </File>
-            <File>
-              <FileName>Ramp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Algorithm\Ramp.c</FilePath>
             </File>
             <File>
               <FileName>kalman_filter.c</FileName>
@@ -1214,24 +1214,24 @@
               <FilePath>..\Task\can_task.c</FilePath>
             </File>
             <File>
-              <FileName>monitor_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Task\monitor_task.c</FilePath>
-            </File>
-            <File>
               <FileName>UI_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Task\UI_task.c</FilePath>
             </File>
             <File>
-              <FileName>device_task.c</FileName>
+              <FileName>monitor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Task\device_task.c</FilePath>
+              <FilePath>..\Task\monitor_task.c</FilePath>
             </File>
             <File>
               <FileName>print_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Task\print_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>device_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Task\device_task.c</FilePath>
             </File>
           </Files>
         </Group>

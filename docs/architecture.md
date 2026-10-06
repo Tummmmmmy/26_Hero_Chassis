@@ -86,7 +86,8 @@ Task/
 
 | 状态 | 归属 |
 |---|---|
-| `Motor_Controller` / `Motor_Feedback` / `CAN_Rx_Message_t` | `Core/Inc/main.h`（全项目共用类型） |
+| `Motor_Controller` / `Motor_Feedback` | `Devices/motor.h`（电机通用结构体，各控制模块持有） |
+| `CAN_Rx_Message_t` / `canRxQueueHandle` | `BSP/bsp_can.h`（CAN 接收帧结构体与接收队列句柄） |
 | 底盘 4 电机、麦轮解算、速度环 PID、逻辑→物理 ID 映射 | `Modules/chassis_control.c`（电机数组为 `static`，对外只给 `Chassis_Output_t`） |
 | 气缸相位 | `Modules/climb_control.c`（`static`，对外只给 `Climb_Get_Phase()`） |
 | 功率控制器（缓冲 PID、功率模型参数、分配结果） | `Modules/power_control.c` |

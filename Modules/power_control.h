@@ -1,9 +1,15 @@
+/**
+ * @file power_control.h
+ * @brief 底盘功率控制接口
+ *
+ */
+
 #ifndef POWER_CONTROL_H
 #define POWER_CONTROL_H
 
 #include "bsp_power_meter.h"
 #include <stdint.h>
-#include "main.h"
+#include "motor.h"
 #include "pid.h"
 
 #define USE_RLS_ONLINE_IDENTIFICATION 0//0:固定参数 ,1:RLS 

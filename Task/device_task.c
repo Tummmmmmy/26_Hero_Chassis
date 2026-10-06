@@ -1,3 +1,9 @@
+/**
+ * @file device_task.c
+ * @brief 设备指示任务
+ *
+ */
+
 #include "device_task.h"
 #include "ws2812.h"
 #include "cmsis_os2.h"

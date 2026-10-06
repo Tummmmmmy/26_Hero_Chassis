@@ -1,8 +1,7 @@
 /**
  * @file control_task.c
- * @brief 1ms 控制任务(Chassis_Control_task)
+ * @brief 机器人主控制任务
  *
- * 周期调用 Robot_Control_Loop 完成整机控制。
  */
 
 #include "control_task.h"
@@ -11,7 +10,7 @@
 #include "task.h"
 #include "robot_control.h"
 
-//控制任务
+
 void Chassis_Control_task(void const * argument)
 {
 	portTickType xLastWakeTime;

@@ -1,3 +1,8 @@
+/**
+ * @file bsp_power_meter.c
+ * @brief 功率计板级驱动
+ */
+
 #include "bsp_power_meter.h"
 #include "cmsis_os2.h"
 #include <string.h>
@@ -21,7 +26,6 @@ void power_meter_init(void)
 
 /**
   * @brief 解析反馈的功率计数据
-  * @param rx_data: 指向CAN接收数据数组的指针
   */
 void power_meter_decode(uint8_t *rx_data)
 {
@@ -29,15 +33,14 @@ void power_meter_decode(uint8_t *rx_data)
     {
         struct
         {
-            float voltage_mV;//前4字节
-            float current_mA;//后4字节
+            float voltage_mV;
+            float current_mA;
         } pack;
         uint8_t data_buffer[8];
     } power_meter_union_t;
 
     power_meter_union_t temp_union;
 
-    //将接收到的8字节数据拷贝
     memcpy(temp_union.data_buffer, rx_data, 8);
 
     //单位换算
@@ -46,8 +49,8 @@ void power_meter_decode(uint8_t *rx_data)
     //计算功率
     power_meter.power = power_meter.voltage * power_meter.current;
 
-    power_meter.offline_flag = 0;     //收到数据，标记为在线
-    power_meter.last_update_time = osKernelGetTickCount(); //记录当前时间戳
+    power_meter.offline_flag = 0;
+    power_meter.last_update_time = osKernelGetTickCount();
 }
 
 

@@ -2,9 +2,6 @@
  * @file gimbal_link.h
  * @brief 底盘板与云台板的板间链路数据契约
  *
- * 云台板通过 CAN 下发整机指令(0x300)与 UI 数据(0x308), 本模块承载这两份
- * 输入快照的类型定义与解码, 并维护链路在线状态(200ms 超时)。字段与云台板
- * 发送侧的 Send_Chassis_Command / Send_Chassis_UI_Data 一一对应, 不得单独修改。
  */
 #ifndef GIMBAL_LINK_H
 #define GIMBAL_LINK_H
@@ -42,7 +39,8 @@ typedef struct
     float yaw_deg;
     float pit_deg;
 	  uint16_t friction_speed;
-} Chassis_UI_t;
+} Chassis_UI_t;
+
 
 extern volatile Chassis_Cmd_t chassis;
 extern volatile Chassis_UI_t UI_Data;

@@ -2,8 +2,6 @@
  * @file gimbal_link.c
  * @brief 底盘板与云台板板间链路实现
  *
- * 云台板下发的整机指令(0x300)与 UI 数据(0x308)的解码与快照,
- * 以及链路在线状态维护(200ms 超时)。
  */
 
 #include "gimbal_link.h"
@@ -15,8 +13,8 @@ volatile Chassis_Cmd_t chassis = {0,0,0,0,0,0,1,0,0};
 volatile Chassis_UI_t UI_Data = {0,0,0};
 
 //板间链路在线状态
-static uint32_t s_last_rx_tick = 0;
-static volatile bool s_is_online = false;
+static uint32_t last_rx_tick = 0;
+static volatile bool is_online = false;
 
 
 //云台发底盘数据
@@ -26,7 +24,7 @@ typedef union
     
     __packed struct
     {
-        int64_t  vx : 16;             //现在先16后面改成15(-16384 ~ 16383)（wz变速时不够）
+        int64_t  vx : 16;
         int64_t  vy : 16; 
         int64_t  wz : 16; 
         
@@ -64,10 +62,12 @@ void Gimbal_Link_Decode_Command(const uint8_t *data)
     chassis.friction_state = rx_msg.pack.friction_state;
 	  chassis.is_base_locked = rx_msg.pack.is_base_locked;
 	  chassis.battle_mode    = rx_msg.pack.battle_mode;
-    //刷新链路在线状态(收到帧即判在线)
-    s_last_rx_tick = osKernelGetTickCount();
-    s_is_online = true;
+
+    last_rx_tick = osKernelGetTickCount();
+    is_online = true;
 }
+
+
 
 
 typedef union
@@ -85,7 +85,6 @@ typedef union
     } pack;
 } Gimbal_UI_Msg_t;
 
-
 //更新云台发来的UI数据包
 void Gimbal_Link_Decode_UI(const uint8_t *data)
 {
@@ -100,18 +99,18 @@ void Gimbal_Link_Decode_UI(const uint8_t *data)
 }
 
 
-//双板链路在线巡检
+//双板通信链路在线巡检
 void Gimbal_Link_Update_Online_Status(uint32_t current_tick)
 {
-    if(current_tick - s_last_rx_tick > GIMBAL_LINK_OFFLINE_TIMEOUT_MS)
+    if(current_tick - last_rx_tick > GIMBAL_LINK_OFFLINE_TIMEOUT_MS)
     {
-        s_is_online = false;
+        is_online = false;
     }
 }
 
 
-//双板链路是否在线
+//双板通信链路是否在线
 bool Gimbal_Link_Is_Online(void)
 {
-    return s_is_online;
+    return is_online;
 }

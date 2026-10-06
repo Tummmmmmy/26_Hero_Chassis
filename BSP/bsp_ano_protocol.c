@@ -1,7 +1,8 @@
-// =================================================================
-// 文件名: bsp_ano_protocol.c
-// 描  述: 匿名上位机 & VOFA+ 通信协议模块实现
-// =================================================================
+/**
+ * @file bsp_ano_protocol.c
+ * @brief 匿名上位机 & VOFA+ 通信协议模块实现
+ *
+ */
 
 #include "bsp_ano_protocol.h"
 #include "usart.h"
@@ -21,14 +22,13 @@
 
 __align(32) static uint8_t tx_buffer[TX_BUFFER_SIZE];
 
-//FreeRTOS对象句柄
-extern osMessageQueueId_t anoPrintQueueHandle; //队列句柄，由freertos.c定义
+extern osMessageQueueId_t anoPrintQueueHandle;
 
 
 // ======================== 底层协议打包与发送函数 ========================
-/**
-  * @brief  【底层】根据消息类型，打包并启动DMA发送
-  */
+
+
+//根据消息类型，打包并启动DMA发送
 static void Pack_And_Send_DMA(const Print_Msg_t* msg)
 {
     uint16_t frame_len = 0;
@@ -76,8 +76,8 @@ static void Pack_And_Send_DMA(const Print_Msg_t* msg)
 
     if(frame_len > 0)
     {
-			
-//        SCB_CleanDCache_by_Addr((uint32_t*)tx_buffer, TX_BUFFER_SIZE);
+
+        SCB_CleanDCache_by_Addr((uint32_t*)tx_buffer, TX_BUFFER_SIZE);
         //启动DMA发送
         HAL_UART_Transmit_DMA(COMM_UART_HANDLE, tx_buffer, frame_len);
     }
@@ -88,12 +88,10 @@ static void Pack_And_Send_DMA(const Print_Msg_t* msg)
 }
 
 
-
 // ======================== 供外部调用的“生产者”函数 ========================
 
-/**
-  * @brief  打印匿名助手的波形
-  */
+
+//打印匿名助手的波形
 void ANO_Print_Wave(uint8_t frame_id, uint8_t num_floats, ...)
 {
     if(num_floats == 0 || num_floats > MAX_WAVE_FLOATS) return;
@@ -118,9 +116,7 @@ void ANO_Print_Wave(uint8_t frame_id, uint8_t num_floats, ...)
 
 
 
-/**
-  * @brief  打印VOFA+波形
-  */
+//打印VOFA+波形
 void VOFA_Print_Wave(uint8_t num_floats, ...)
 {
     if(num_floats == 0 || num_floats > 20) return;
@@ -148,13 +144,10 @@ void VOFA_Print_Wave(uint8_t num_floats, ...)
 }
 
 
-
-
 // ======================== RTOS 任务与回调函数实现 ========================
 
-/**
-  * @brief  【消费者】统一的打印任务
-  */
+
+//统一的打印任务
 void Print_Task(void const *argument)
 {
     //1.在任务开始时，先获取一次信号量，使计数值变为0，确保第一次发送前，信号量是不可用的
@@ -169,7 +162,7 @@ void Print_Task(void const *argument)
         {
             //3.打包并启动DMA发送
             Pack_And_Send_DMA(&msg_to_print);
-            
+
             //4.等待DMA传输完成
             //任务将在此处阻塞，直到中断释放信号量(获取哪个信号量,超时时间)
             osSemaphoreAcquire(anoTxSemHandle, osWaitForever);
@@ -178,9 +171,7 @@ void Print_Task(void const *argument)
 }
 
 
-/**
-  * @brief  UART发送完成中断回调函数
-  */
+//UART发送完成中断回调函数
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     //判断是否是匿名通信的串口

@@ -1,3 +1,8 @@
+/**
+ * @file power_control.c
+ * @brief µ×ÅÌ¹¦ÂÊ¿ØÖÆ
+ */
+
 #include "power_control.h"
 #include "RM_JudgeSystem.h"
 #include <string.h>

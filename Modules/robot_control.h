@@ -2,34 +2,33 @@
  * @file robot_control.h
  * @brief 底盘板整机调度接口与整机状态类型
  *
- * 底盘板的总控制流程(1ms): 失能检查 -> 使能切换 -> 上坎 -> 底盘运动
- * -> 功率控制 -> 统一 CAN 输出。各模块只提供状态与输出, 不自行发送 CAN。
  */
 #ifndef ROBOT_CONTROL_H
 #define ROBOT_CONTROL_H
 
 #include <stdint.h>
 
-//机器人LED状态枚举
+//LED状态
 typedef enum {
     LED_BOOTING,        //启动中
-    LED_DISABLED,       //失能(红色)
-    LED_ENABLED,        //使能(蓝色)
+    LED_DISABLED,       //失能
+    LED_ENABLED,        //使能
 	  LED_CLIMB_ACTIVE,   //
     LED_CLIMB_FRONT,    //前伸
     LED_CLIMB_BACK,     //后伸
 } LED_State_e;
 
-//上电初始化所有控制模块(All_Init 任务中调用)
+
+//初始化模块
 void Robot_Param_Init(void);
 
-//1ms 控制主循环(Chassis_Control_task 调用)
+//主控制循环
 void Robot_Control_Loop(void);
 
-//获取系统LED状态(device_task 读取)
+//获取LED状态
 LED_State_e Robot_Get_Led_State(void);
 
-//设置系统LED状态(整机控制流程使用)
+//设置LED状态
 void Robot_Set_Led_State(LED_State_e state);
 
 #endif

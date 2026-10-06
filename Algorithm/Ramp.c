@@ -1,40 +1,39 @@
 #include "Ramp.h"
 
+
 /**
-  * @brief  斜坡函数,使目标输出值缓慢等于期望值
-  * @param  期望最终输出,当前输出,变化速度(越大越快)
-  * @retval 当前输出
+  * @brief  浮点数斜坡函数
+  * @param  final: 最终目标值
+  * @param  now:   当前值
+  * @param  ramp:  每调用一次的最大变化量 (斜率)
+  * @retval        计算后的新当前值
   */
-float RAMP_float( float final, float now, float ramp )
+float RAMP_float(float final, float now, float ramp)
 {
-	  float buffer = 0;
-	  buffer = final - now;
-	
-		if (buffer > 0)
+    float buffer = final - now;
+
+    // 限制斜坡步长不能为负
+    if(ramp < 0.0f)
 		{
-				if (buffer > ramp)
-				{  
-						now += ramp;
-				}   
-				else
-				{
-						now += buffer;
-				}
-		}
+        ramp = -ramp;
+    }
+
+    if(buffer > ramp)
+		{
+        now += ramp;
+    }
+		else if(buffer < -ramp)
+		{
+        now -= ramp;
+    }
 		else
 		{
-				if (buffer < -ramp)
-				{
-						now += -ramp;
-				}
-				else
-				{
-						now += buffer;
-				}
-		}
-		
-		return now;
+        now = final;
+    }
+
+    return now;
 }
+
 
 /**
   * @brief  斜坡函数,使目标输出值缓慢等于指针输入值
@@ -69,7 +68,6 @@ float RampInc_float( float *buffer, float now, float ramp )
 					  *buffer  = 0;
 				}
 		}
-		
+
 		return now;
 }
-
