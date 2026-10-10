@@ -13,7 +13,7 @@ typedef enum {
     LED_BOOTING,        //启动中
     LED_DISABLED,       //失能
     LED_ENABLED,        //使能
-	  LED_CLIMB_ACTIVE,   //
+	  LED_CLIMB_ACTIVE,   //激活
     LED_CLIMB_FRONT,    //前伸
     LED_CLIMB_BACK,     //后伸
 } LED_State_e;

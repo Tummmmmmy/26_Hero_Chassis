@@ -92,7 +92,6 @@ void Robot_Control_Loop(void)
     //上坎
     Climb_Control_Update(chassis.climb_mode);
 		
-		//上坎/使能状态指示
     switch(Climb_Get_Phase())
     {
         case CLIMB_BACK_EXTEND:
@@ -116,7 +115,7 @@ void Robot_Control_Loop(void)
         current_max_output = 15000.0f; 
     }
 		
-		//麦轮解算 + 速度环
+		//底盘控制
     Chassis_Control_Update(vx, vy, wz, current_max_output);
 		
     const Chassis_Output_t* chassis_out = Chassis_Get_Output();

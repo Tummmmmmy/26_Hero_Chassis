@@ -2,7 +2,6 @@
  * @file supercap_task.c
  * @brief 超级电容任务
  *
- * 50ms 周期: 离线检测 → 充放电决策 → 发送 0x601 指令
  */
 
 #include "supercap_task.h"
@@ -13,7 +12,6 @@
 
 void SuperCap_Task(void const * argument)
 {
-    //等待系统稳定
     osDelay(2000);
 
     for(;;)

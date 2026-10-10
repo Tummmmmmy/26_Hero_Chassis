@@ -1,15 +1,14 @@
 /**
  * @file bsp_SuperCap.c
- * @brief 超级电容板级驱动 (FDCAN2, 收 0x600 / 发 0x601)
+ * @brief 超级电容板级驱动
  *
- * 本文件只负责超电报文收发与状态维护;
- * 充放电决策在 Modules/supercap_control.c, 周期任务在 Task/supercap_task.c。
  */
 
 #include "bsp_SuperCap.h"
 #include "bsp_can.h"
 #include "cmsis_os2.h"
 #include <string.h>
+
 
 //超电反馈数据
 typedef union
@@ -25,6 +24,7 @@ typedef union
     } __attribute__((packed)) pack;
 } supercap_rx_data_t;
 
+
 //超电控制数据
 typedef union
 {
@@ -37,6 +37,7 @@ typedef union
         uint8_t reserved[2];
     } __attribute__((packed)) pack;
 } supercap_tx_data_t;
+
 
 //超电模块内部状态
 typedef struct
@@ -51,12 +52,14 @@ typedef struct
 
 static supercap_controller_t s_supercap;
 
+
 //初始化超电
 void supercap_init(void)
 {
     memset(&s_supercap, 0, sizeof(supercap_controller_t));
     s_supercap.offline_flag = true; //默认离线
 }
+
 
 //CAN报文解析
 void supercap_rx_decode(const uint8_t* rx_buf, uint8_t dlc)
@@ -67,6 +70,7 @@ void supercap_rx_decode(const uint8_t* rx_buf, uint8_t dlc)
     s_supercap.last_update_time = osKernelGetTickCount();
     s_supercap.offline_flag = false;
 }
+
 
 //离线检测
 void supercap_update_offline(uint32_t now_ms)
@@ -83,11 +87,13 @@ bool supercap_is_offline(void)
     return s_supercap.offline_flag;
 }
 
-//超电是否处于放电输出状态
+
+//是否处于放电输出状态
 bool supercap_is_output_enabled(void)
 {
     return (s_supercap.tx_data.pack.is_cap_output == SUPERCAP_OUTPUT_ENABLE);
 }
+
 
 //获取超电电量百分比
 uint8_t supercap_get_cap_level(void)
@@ -95,13 +101,15 @@ uint8_t supercap_get_cap_level(void)
     return s_supercap.rx_data.pack.cap_level;
 }
 
-//获取超电是否可用(允许放电)
+
+//是否允许放电
 uint8_t supercap_get_cap_usable(void)
 {
     return s_supercap.rx_data.pack.cap_usable;
 }
 
-//写入本周期充放电命令
+
+//更新控制命令
 void supercap_set_command(const supercap_cmd_t* cmd)
 {
     s_supercap.tx_data.pack.charge_power = cmd->charge_power;
@@ -109,9 +117,9 @@ void supercap_set_command(const supercap_cmd_t* cmd)
     s_supercap.tx_data.pack.is_cap_output = cmd->is_cap_output;
 }
 
+
 //发送超电控制指令
 void supercap_send_command(FDCAN_HandleTypeDef* hfdcan)
 {
-    //0x601
     BSP_CAN_Send(hfdcan, SUPERCAP_TX_ID, s_supercap.tx_data.data, FDCAN_DLC_BYTES_8);
 }

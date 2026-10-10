@@ -6,7 +6,6 @@
 #ifndef SUPERCAP_TASK_H
 #define SUPERCAP_TASK_H
 
-//超级电容任务(50ms)
 void SuperCap_Task(void const * argument);
 
 #endif

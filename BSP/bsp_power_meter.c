@@ -1,14 +1,13 @@
 /**
  * @file bsp_power_meter.c
- * @brief 功率计板级驱动 (FDCAN2, 报文 0x301)
+ * @brief 功率计板级驱动
  *
- * 功率计数据仅用于调试 / 功率模型数据采集, 不参与闭环控制;
- * 离线检测由 Monitor_Task 周期调用。
  */
 
 #include "bsp_power_meter.h"
 #include "cmsis_os2.h"
 #include <string.h>
+
 
 //功率计反馈数据结构体
 typedef struct
@@ -21,7 +20,8 @@ typedef struct
     uint8_t offline_flag;     //离线标志位,0:在线,1:离线
 } power_meter_data_t;
 
-//功率计报文布局: 前4字节电压(mV), 后4字节电流(mA)
+
+//功率计报文
 typedef union
 {
     struct
@@ -34,6 +34,7 @@ typedef union
 
 static power_meter_data_t s_power_meter;
 
+
 //功率计初始化
 void power_meter_init(void)
 {
@@ -43,6 +44,7 @@ void power_meter_init(void)
     s_power_meter.last_update_time = 0;
     s_power_meter.offline_flag = 1;//默认离线
 }
+
 
 //解析功率计反馈报文
 void power_meter_decode(const uint8_t* rx_data)
@@ -61,6 +63,7 @@ void power_meter_decode(const uint8_t* rx_data)
     s_power_meter.last_update_time = osKernelGetTickCount();
 }
 
+
 //功率计离线检测
 void power_meter_check_offline(uint32_t timeout_ms)
 {
@@ -76,6 +79,7 @@ bool power_meter_is_offline(void)
 {
     return (s_power_meter.offline_flag != 0);
 }
+
 
 //获取功率计功率(W)
 float power_meter_get_power(void)

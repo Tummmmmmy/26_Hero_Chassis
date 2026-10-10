@@ -2,9 +2,6 @@
  * @file power_control.c
  * @brief 底盘功率控制
  *
- * 功率模型 P = k1*w*I + k2*I^2 + k3*w^2;
- * 缓冲能量环修正功率上限后, 将预算按速度误差差速分配到 4 个轮子,
- * 再反解出每轮最终电流。
  */
 
 #include "power_control.h"
@@ -18,7 +15,7 @@
 #define M3508_REDUCTION_RATIO (14.0f)//3508减速比
 #define LOW_ERROR_MODE_THRESHOLD 50.0f
 
-//底盘功率模型与分配结果
+//功率模型与分配结果
 typedef struct
 {
     float final_power_limit;           //最终功率上限
@@ -36,6 +33,8 @@ typedef struct
 
 } chassis_power_control_t;
 
+
+
 //总功率控制内部状态
 typedef struct
 {
@@ -52,11 +51,15 @@ typedef struct
 
 } power_control_t;
 
-static power_control_t s_power;
 
-static float s_static_power;          //静态功率
-static float s_final_cap_limit;       //超电限制功率
-static float s_allocatable_power_budget;
+
+static power_control_t power_controller;
+
+
+
+static float static_power;          //静态功率
+static float final_cap_limit;       //超电限制功率
+static float allocatable_power_budget;
 
 //电容环PID参数
 static float buffer_pid_kp = -20.0f;//能量与目标差1J，功率上限就变化20W
@@ -69,37 +72,37 @@ static float pid_max_output = 80.0f;//输出限幅
 //计算最终电流值
 static float calculate_current_by_power(float a, float b, float c, float target_direction);
 
-//解析本周期功率上限(超电放电时按电量分档, 否则用裁判系统底盘功率上限)
+//解析当前功率上限
 static void Power_Resolve_Limit(void);
 
-//电容环: 计算最终功率上限并扣除静态功率得到可分配预算
+//计算最终功率上限
 static void Power_Calc_Allocatable(void);
 
-//计算总功率缩放系数(预测功率超过预算时缩放到预算)
+//计算总功率缩放系数
 static float Power_Calc_Scale(float predicted_total_power, float budget);
 
 
 //初始化功率控制
 void Power_Control_Init(void)
 {
-    PID_Init(&s_power.buffer_pid, buffer_pid_kp, buffer_pid_ki, buffer_pid_kd, pid_max_i_out, pid_max_output);
-    s_power.buffer_pid_target = 50.0f;//缓冲能量目标值
+    PID_Init(&power_controller.buffer_pid, buffer_pid_kp, buffer_pid_ki, buffer_pid_kd, pid_max_i_out, pid_max_output);
+    power_controller.buffer_pid_target = 50.0f;//缓冲能量目标值
 
     //功率环参数
-    s_power.power_loop.k1 = 0.4112f;
-    s_power.power_loop.k2 = 0.1686f;
-    s_power.power_loop.k3 = 0.0358f;
+    power_controller.power_loop.k1 = 0.4112f;
+    power_controller.power_loop.k2 = 0.1686f;
+    power_controller.power_loop.k3 = 0.0358f;
 
-    s_static_power = 4.0f;//静态功率
-    s_power.allocated_power_last = 0.0f;
+    static_power = 4.0f;//静态功率
+    power_controller.allocated_power_last = 0.0f;
 
-    s_power.power_loop.predicted_total_power = 0.0f;
-    s_power.power_loop.allocated_total_power = 0.0f;
-    memset(s_power.power_loop.final_current_raw, 0, sizeof(s_power.power_loop.final_current_raw));
+    power_controller.power_loop.predicted_total_power = 0.0f;
+    power_controller.power_loop.allocated_total_power = 0.0f;
+    memset(power_controller.power_loop.final_current_raw, 0, sizeof(power_controller.power_loop.final_current_raw));
 }
 
 
-//解析本周期功率上限
+//解析当前功率上限
 static void Power_Resolve_Limit(void)
 {
     if(supercap_is_output_enabled())
@@ -109,55 +112,55 @@ static void Power_Resolve_Limit(void)
 
         if(cap_pct > 50)
         {
-            s_final_cap_limit = 390.0f;//比赛390     日常300
+            final_cap_limit = 390.0f;//比赛390     日常300
         }
         else if(cap_pct > 30)
         {
-            s_final_cap_limit = 300.0f;//比赛300         220
+            final_cap_limit = 300.0f;//比赛300         220
         }
         else if(cap_pct > 10)
         {
-            s_final_cap_limit = 250.0f;//比赛250         200
+            final_cap_limit = 250.0f;//比赛250         200
         }
         else
         {
-            s_final_cap_limit = 150.0f;
+            final_cap_limit = 150.0f;
         }
 
-
+        //上坎
         if(chassis.climb_mode == 2 || chassis.climb_mode == 1)
         {
-            s_final_cap_limit = 130.0f;
+            final_cap_limit = 130.0f;
         }
 
 
-        s_power.referee_power_limit = s_final_cap_limit;
+        power_controller.referee_power_limit = final_cap_limit;
     }
-    else s_power.referee_power_limit = ext_game_robot_state.data.chassis_power_limit;
+    else power_controller.referee_power_limit = ext_game_robot_state.data.chassis_power_limit;
 }
 
 
-//电容环: 计算最终功率上限与可分配预算
+
+//计算最终功率上限
 static void Power_Calc_Allocatable(void)
 {
-    chassis_power_control_t* loop = &s_power.power_loop;
+    chassis_power_control_t* loop = &power_controller.power_loop;
 
-    //2.电容环(缓冲能量PID计算最终功率上限)
+    //电容环(缓冲能量PID计算最终功率上限)
     if(!Judge_IsOnline())//裁判系统离线
     {
         loop->final_power_limit = 100.0f;
     }
     else
     {
-        //缓冲能量PID：目标值 - 当前缓冲能量
-        float buffer_pid_output = PID_Calculate(&s_power.buffer_pid, s_power.buffer_pid_target, s_power.referee_power_buffer);
+        float buffer_pid_output = PID_Calculate(&power_controller.buffer_pid, power_controller.buffer_pid_target, power_controller.referee_power_buffer);
 
-        //最终功率上限 = 裁判系统功率上限 + PID调整量
-        loop->final_power_limit = s_power.referee_power_limit + buffer_pid_output;
+        //最终功率上限 = 裁判系统功率上限 + 缓冲能量PID调整量
+        loop->final_power_limit = power_controller.referee_power_limit + buffer_pid_output;
     }
 
-    s_allocatable_power_budget = loop->final_power_limit - s_static_power;// - model_error
-    if(s_allocatable_power_budget < 2.0f) s_allocatable_power_budget = 2.0f;
+    allocatable_power_budget = loop->final_power_limit - static_power;
+    if(allocatable_power_budget < 2.0f) allocatable_power_budget = 2.0f;
 }
 
 
@@ -182,21 +185,22 @@ static float Power_Calc_Scale(float predicted_total_power, float budget)
 //功率控制
 void Power_Control_Update(const Motor_Controller* motors, const int16_t* target_current, const float* speed_error_rpm)
 {
-    chassis_power_control_t* loop = &s_power.power_loop;
+    chassis_power_control_t* loop = &power_controller.power_loop;
+    power_controller.referee_power_buffer = ext_power_heat_data.data.chassis_power_buffer;
 
-    s_power.referee_power_buffer = ext_power_heat_data.data.chassis_power_buffer;
-
-    //1.解析本周期功率上限(超电 或 裁判系统)
+	
+    //1.解析当前功率上限
     Power_Resolve_Limit();
 
     loop->target_current_raw = target_current;
 
 
-    //2.电容环(缓冲能量PID) + 3.扣除静态功率
+    //2.电容环(缓冲能量PID计算最终功率上限)
     Power_Calc_Allocatable();
 
 
-    //4.功率环(差速分配)
+	
+    //3.功率环(差速分配)
     float target_current_A[4] = {0.0f};
     float actual_speed_rps[4] = {0.0f};
     float predicted_power[4] = {0.0f};
@@ -225,9 +229,10 @@ void Power_Control_Update(const Motor_Controller* motors, const int16_t* target_
     int is_low_error_mode = (total_output_speed_error_rpm < LOW_ERROR_MODE_THRESHOLD);
 
 
-    //总功率缩放系数
-    float power_scale = Power_Calc_Scale(loop->predicted_total_power, s_allocatable_power_budget);
+    //计算总功率缩放系数
+    float power_scale = Power_Calc_Scale(loop->predicted_total_power, allocatable_power_budget);
 
+		
     //根据差速选择不同的分配策略
     float final_power[4] = {0.0f};
     if(is_low_error_mode)
@@ -268,12 +273,12 @@ void Power_Control_Update(const Motor_Controller* motors, const int16_t* target_
     }
 
 
-    s_power.allocated_power_last = loop->predicted_total_power;
+    power_controller.allocated_power_last = loop->predicted_total_power;
     loop->allocated_total_power = 0;
     for(int i=0; i<4; ++i) loop->allocated_total_power += final_power[i];
 
 
-    //5.计算最终电流
+    //4.计算最终电流
     for(int i = 0; i < 4; i++)
     {
         //功率模型: P = k1*ω*I + k2*I^2 + k3*ω^2
@@ -307,6 +312,7 @@ void Power_Control_Update(const Motor_Controller* motors, const int16_t* target_
         else if(loop->final_current_raw[i] < -16384) loop->final_current_raw[i] = -16384;
     }
 }
+
 
 
 //计算最终电流值
@@ -364,5 +370,5 @@ static float calculate_current_by_power(float a, float b, float c, float target_
 //获取功率控制后的最终电流
 void Power_Control_Get_Currents(int16_t* output_current)
 {
-    memcpy(output_current, s_power.power_loop.final_current_raw, 4 * sizeof(int16_t));
+    memcpy(output_current, power_controller.power_loop.final_current_raw, 4 * sizeof(int16_t));
 }

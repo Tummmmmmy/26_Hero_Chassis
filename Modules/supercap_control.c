@@ -2,9 +2,6 @@
  * @file supercap_control.c
  * @brief 超级电容充放电决策
  *
- * 逻辑与原 SuperCap_Task 内决策部分一致:
- * 底盘失能/超电离线时充放全禁; 满足放电条件时开超电输出;
- * 未放电时按缓冲能量计算充电功率。
  */
 
 #include "supercap_control.h"
@@ -12,12 +9,12 @@
 #include "gimbal_link.h"
 #include "RM_JudgeSystem.h"
 
-//超电充放电决策
+
 void SuperCap_Control_Update(void)
 {
     supercap_cmd_t cmd = {0};
 
-    //底盘未使能 或 超电离线: 充/放全禁
+		
     if(chassis.mode == 0 || supercap_is_offline())
     {
         cmd.charge_enable = SUPERCAP_CHARGE_DISABLE;
@@ -51,7 +48,7 @@ void SuperCap_Control_Update(void)
 
         if(cmd.is_cap_output == SUPERCAP_OUTPUT_ENABLE)//正在放电
         {
-            charge_power_target = referee_limit * 0.9f;//0.95
+            charge_power_target = referee_limit * 0.9f;
         }
         else//没有放电
         {
@@ -93,6 +90,6 @@ void SuperCap_Control_Update(void)
         cmd.charge_power  = charge_power_target;
         cmd.charge_enable = SUPERCAP_CHARGE_ENABLE;
     }
-
+    //更新指令
     supercap_set_command(&cmd);
 }
