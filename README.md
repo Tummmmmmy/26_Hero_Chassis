@@ -25,6 +25,8 @@ RoboMaster 英雄机器人底盘主控板的嵌入式控制程序。
 | 裁判系统 | USART1 |
 | 状态灯 | WS2812 |
 
+器件型号、CAN 接口和通信链路见 [硬件连接与通信拓扑](docs/hardware-topology.png)。
+
 ### 软件环境
 
 - STM32Cube HAL
@@ -80,7 +82,7 @@ RoboMaster 英雄机器人底盘主控板的嵌入式控制程序。
 
 ## 3. 系统结构
 
-整个程序采用基于 FreeRTOS 的任务调度，应用逻辑主要集中在 `Modules/` 中。更详细的软件结构与数据流说明见 `docs/architecture.md`。
+整个程序采用基于 FreeRTOS 的任务调度，应用逻辑主要集中在 `Modules/` 中。
 
 ```text
                     ┌──────────────────┐
@@ -109,6 +111,8 @@ RoboMaster 英雄机器人底盘主控板的嵌入式控制程序。
                                 ▼
                       M3508 × 4 / SuperCap
 ```
+
+更完整的软件分层、任务模型和模块职责见 [架构说明](docs/architecture.md)。
 
 ---
 
