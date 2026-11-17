@@ -2,6 +2,8 @@
 
 RoboMaster 英雄机器人底盘主控板的嵌入式控制程序，覆盖麦克纳姆轮运动控制、功率管理、超级电容、气动上坎和板间协同。
 
+> **版权说明：** Copyright © 2026 Tummmmmmy. All rights reserved. 本仓库仅用于作品展示与求职评审，未经授权不得复制、修改或再分发。详见 [LICENSE](LICENSE)。
+
 > **项目角色：** 电控负责人，负责整车电控架构、底盘板固件、功率管理、板间协同与实车联调。<br>
 > **本仓库范围：** 底盘板固件；云台板固件见 [26_Hero_Gimbal](https://github.com/Tummmmmmy/26_Hero_Gimbal)。
 
