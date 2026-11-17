@@ -1,10 +1,61 @@
 # 26_Hero_Chassis — RoboMaster 英雄机器人底盘板电控
 
-RoboMaster 英雄机器人底盘主控板的嵌入式控制程序。
+RoboMaster 英雄机器人底盘主控板的嵌入式控制程序，覆盖麦克纳姆轮运动控制、功率管理、超级电容、气动上坎和板间协同。
 
-固件运行在 **STM32H723** 上，基于 **FreeRTOS** 实时调度，负责底盘麦克纳姆轮运动控制、功率管理、超级电容、气动上坎，以及与云台主控板之间的整机协同。
+> **项目角色：** 电控负责人，负责整车电控架构、底盘板固件、功率管理、板间协同与实车联调。<br>
+> **本仓库范围：** 底盘板固件；云台板固件见 [26_Hero_Gimbal](https://github.com/Tummmmmmy/26_Hero_Gimbal)。
 
-项目来源于 RoboMaster 赛季实车开发，并经过实际上车调试和比赛验证。
+<p align="center">
+  <img src="docs/media/chassis-front.jpg" alt="RoboMaster 英雄机器人整车与底盘" width="760">
+</p>
+
+## 项目亮点
+
+- **整机比赛结果：** RoboMaster 2026 机甲大师超级对抗赛·全国赛 全国一等奖（十二强） | 英雄机器人全国一等奖。
+- **整机国赛统计：** 局均命中 6.5 发，局均关键伤害 1759，双项全国第一。
+- **底盘控制：** 四轮 M3508 麦轮解算与速度环闭环；双 STM32H723 + FreeRTOS，1 ms 控制周期，FDCAN 接收采用中断入队、任务解析。
+- **功率管理：** 功率预测模型 + 裁判系统缓冲能量 PID + 超级电容状态 + 四轮功率分配；专项实车测试中功率利用接近 100%，测试期间无超限扣血。
+- **整机协同：** 板间 CAN 指令/状态交换、200 ms 链路超时失能、气动上坎状态机与超级电容充放电管理。
+
+## 项目角色与贡献范围
+
+- 本人负责：整车电控架构、底盘板固件、麦轮运动控制、功率与超级电容管理、CAN 协议、参数整定和实车联调。
+- 团队协作：视觉识别算法、机械结构与整车硬件加工。
+- 仓库保留赛季迭代记录，当前主线代码位于 `Modules/` 与 `Task/`。
+
+## 第三方组件与原创范围
+
+- 仓库包含 STM32 HAL、CMSIS、FreeRTOS、arm_math 等第三方组件；应用层模块、任务组织、CAN 协议、底盘控制、功率管理、超级电容策略和实车调试为本项目工作。
+- 外部参考代码和电机、传感器、裁判系统协议实现按其原许可保留，不作为原创部分展示。
+
+## 实车与演示
+
+### 官方赛事高光
+
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV18tuc6LEzY">
+    <img src="docs/media/match-highlight.gif" alt="RoboMaster 2026 官方赛事高光" width="760">
+  </a><br>
+  <sub>RoboMaster 官方赛事高光 · 点击观看完整视频（Bilibili）</sub>
+</p>
+
+### 技术演示
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/media/chassis-climb.gif" width="420" alt="气动上坎"><br>气动上坎与底盘执行</td>
+    <td align="center"><img src="docs/media/chassis-drive.gif" width="260" alt="底盘运动"><br>麦轮底盘运动</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/media/chassis-layout.jpg" width="300" alt="底盘与电控布局"><br>底盘与电控布局</td>
+    <td align="center"><img src="docs/media/competition.jpg" width="460" alt="RoboMaster 2026 全国赛现场"><br>RoboMaster 2026 全国赛现场</td>
+  </tr>
+</table>
+
+[完整演示视频（1280×720，22.4 s，3.8 MB）](docs/media/chassis-demo.mp4)
 
 ---
 
@@ -286,6 +337,6 @@ P = k1·ω·I + k2·I² + k3·ω²
 
 该工程来自 RoboMaster 赛季实际使用的英雄机器人底盘板固件，已经完成实车调试，并在比赛中得到实际验证。
 
-部分历史代码、实验性功能和已经停用的方案仍保留在工程中，用于记录赛季开发过程。
+仓库按赛季保留迭代记录，当前主线代码位于 `Modules/` 与 `Task/`。
 
 该仓库主要用于展示机器人嵌入式控制、CAN 通信、实时任务、功率管理以及实车调试相关经验。
