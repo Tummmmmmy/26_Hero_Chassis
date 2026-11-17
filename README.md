@@ -44,14 +44,13 @@ RoboMaster 英雄机器人底盘主控板的嵌入式控制程序，覆盖麦克
 ### 比赛高光
 
 <p align="center">
-  <img src="docs/media/match-highlight.gif" alt="RoboMaster 2026 比赛高光" width="760"><br>
-  <sub>RoboMaster 2026 全国赛比赛高光</sub>
+  <img src="docs/media/match-highlight.gif" alt="RoboMaster 2026 比赛高光" width="760">
 </p>
 
 <table>
   <tr>
     <td align="center"><img src="docs/media/chassis-layout.jpg" width="300" alt="底盘与电控布局"><br>底盘与电控布局</td>
-    <td align="center"><img src="docs/media/competition.jpg" width="460" alt="RoboMaster 2026 全国赛现场"><br>RoboMaster 2026 全国赛现场</td>
+    <td align="center"><img src="docs/media/competition.jpg" width="460" alt="RoboMaster 2026 全国赛现场"></td>
   </tr>
 </table>
 
